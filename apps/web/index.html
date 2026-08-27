@@ -1,0 +1,1224 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Livro-razão de criptoativos</title>
+<meta name="description" content="Controle de carteira de criptoativos com custo médio, resultado em aberto e séries históricas.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --paper:#F4F5EE; --bar:#E0E9D8; --ink:#1A1F18; --muted:#6B7566; --rule:#B4C2AC;
+  --gain:#2E6B3C; --loss:#A63328; --stamp:#C1621B; --sheet-pad:32px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{
+  background:#CBD2C2;color:var(--ink);font-family:'IBM Plex Mono',ui-monospace,monospace;
+  font-size:15px;line-height:1.5;padding:24px 12px 64px;
+}
+
+/* folha de formulário contínuo */
+.sheet{
+  max-width:1180px;margin:0 auto;background:var(--paper);border:1px solid var(--rule);
+  box-shadow:0 1px 0 rgba(0,0,0,.12),0 12px 32px rgba(30,40,25,.18);
+  position:relative;padding:var(--sheet-pad) calc(var(--sheet-pad) + 22px);
+}
+.sheet::before,.sheet::after{
+  content:"";position:absolute;top:0;bottom:0;width:22px;
+  background-image:radial-gradient(circle at center,#CBD2C2 0 4.5px,transparent 4.6px);
+  background-size:22px 30px;background-position:center 12px;
+  border-color:var(--rule);border-style:solid;
+}
+.sheet::before{left:0;border-width:0 1px 0 0}
+.sheet::after{right:0;border-width:0 0 0 1px}
+
+.masthead{
+  display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;
+  gap:10px 24px;padding-bottom:10px;border-bottom:2px solid var(--ink);
+}
+.masthead h1{font-size:15px;font-weight:600;letter-spacing:.3em;text-transform:uppercase}
+.folio{
+  font-family:'IBM Plex Sans Condensed',sans-serif;font-size:12px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+}
+.folio b{color:var(--ink);font-weight:600}
+
+.eyebrow{
+  font-family:'IBM Plex Sans Condensed',sans-serif;font-size:11px;font-weight:600;
+  letter-spacing:.2em;text-transform:uppercase;color:var(--muted);
+}
+.up{color:var(--gain)}
+.down{color:var(--loss)}
+.num{font-variant-numeric:tabular-nums}
+
+section{padding:26px 0;border-bottom:1px solid var(--rule)}
+section.last{border-bottom:0}
+.sec-head{
+  display:flex;align-items:baseline;justify-content:space-between;
+  gap:12px 20px;flex-wrap:wrap;margin-bottom:14px;
+}
+.sec-head h2{font-size:14px;font-weight:600;letter-spacing:.12em;text-transform:uppercase}
+.sec-head .note{font-family:'IBM Plex Sans Condensed',sans-serif;font-size:12px;color:var(--muted)}
+.divider{
+  margin-top:6px;padding:16px 0 0;border-top:2px solid var(--ink);
+  display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;
+}
+
+.toolbar{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px 16px;margin-bottom:16px}
+.chipset{display:flex;flex-wrap:wrap}
+.chip{
+  font-family:'IBM Plex Sans Condensed',sans-serif;font-size:12px;font-weight:600;
+  letter-spacing:.08em;text-transform:uppercase;background:transparent;color:var(--ink);
+  border:1px solid var(--rule);margin-left:-1px;padding:7px 13px;cursor:pointer;
+}
+.chip:first-child{margin-left:0}
+.chip:hover{background:var(--bar)}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink);position:relative;z-index:1}
+button.solid,button.ghost{
+  font-family:'IBM Plex Sans Condensed',sans-serif;font-size:12px;font-weight:600;
+  letter-spacing:.1em;text-transform:uppercase;border:1px solid var(--ink);padding:8px 15px;cursor:pointer;
+}
+button.solid{background:var(--ink);color:var(--paper)}
+button.solid:hover{background:#000}
+button.ghost{background:transparent;color:var(--ink)}
+button.ghost:hover{background:var(--bar)}
+button[disabled]{opacity:.4;cursor:not-allowed}
+.field{display:flex;flex-direction:column;gap:5px}
+.field label{
+  font-family:'IBM Plex Sans Condensed',sans-serif;font-size:11px;
+  letter-spacing:.16em;text-transform:uppercase;color:var(--muted);
+}
+input[type="date"],input[type="search"],textarea{
+  font-family:'IBM Plex Mono',monospace;font-size:14px;color:var(--ink);
+  background:transparent;border:0;border-bottom:1.5px solid var(--ink);padding:5px 2px;
+}
+input[type="search"]{width:min(320px,100%)}
+textarea{border:1px solid var(--rule);background:#FBFCF7;width:100%;padding:8px;resize:vertical}
+:focus-visible{outline:2px solid var(--stamp);outline-offset:2px}
+
+/* patrimônio */
+.destaque{display:flex;flex-wrap:wrap;gap:26px 42px;align-items:flex-end;padding-bottom:18px}
+.total{font-size:clamp(32px,6vw,54px);font-weight:600;letter-spacing:-.02em;line-height:1}
+.total .cents{color:var(--muted)}
+.saldos{display:flex;gap:2px;flex-wrap:wrap}
+.saldo{min-width:132px;border-top:2px solid var(--ink);padding:8px 16px 6px 0}
+.saldo dt{
+  font-family:'IBM Plex Sans Condensed',sans-serif;font-size:11px;
+  letter-spacing:.16em;text-transform:uppercase;color:var(--muted);
+}
+.saldo dd{font-size:18px;font-weight:600;margin-top:2px}
+.saldo dd small{font-size:12px;font-weight:400;margin-left:6px;color:var(--muted)}
+
+.composicao{display:flex;height:16px;border:1px solid var(--ink);margin:4px 0 10px;overflow:hidden}
+.composicao div{height:100%}
+.comp-legenda{
+  display:flex;flex-wrap:wrap;gap:6px 18px;
+  font-family:'IBM Plex Sans Condensed',sans-serif;font-size:12px;color:var(--muted);
+}
+.comp-legenda span{display:flex;align-items:center;gap:6px}
+.comp-legenda i{width:11px;height:11px;display:inline-block;border:1px solid var(--ink)}
+
+.plot{position:relative;height:250px}
+.plot.baixo{height:180px}
+.plot canvas{width:100%!important}
+.legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:10px;font-family:'IBM Plex Sans Condensed',sans-serif;font-size:12px}
+.legend span{display:flex;align-items:center;gap:6px;color:var(--muted)}
+.legend i{width:22px;height:0;border-top-width:2px;display:inline-block}
+
+.table-wrap{overflow-x:auto;border-top:2px solid var(--ink)}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+thead th{
+  font-family:'IBM Plex Sans Condensed',sans-serif;font-size:11px;font-weight:600;
+  letter-spacing:.16em;text-transform:uppercase;color:var(--muted);text-align:right;
+  padding:8px 10px;border-bottom:1px solid var(--rule);white-space:nowrap;user-select:none;
+}
+thead th.sortable{cursor:pointer}
+thead th.lead{text-align:left}
+thead th[aria-sort]{color:var(--ink)}
+tbody td{font-size:13.5px;text-align:right;padding:5px 10px;white-space:nowrap}
+tbody td.lead{text-align:left}
+tbody td small{color:var(--muted);margin-left:5px}
+tbody tr:nth-child(even){background:var(--bar)}
+tfoot td{
+  font-size:13.5px;text-align:right;padding:8px 10px;font-weight:600;
+  border-top:2px solid var(--ink);white-space:nowrap;
+}
+tfoot td.lead{
+  text-align:left;font-family:'IBM Plex Sans Condensed',sans-serif;
+  letter-spacing:.14em;text-transform:uppercase;font-size:11px;
+}
+
+#razao tbody tr[data-id]{cursor:pointer}
+#razao tbody tr[data-id]:hover{outline:1.5px solid var(--ink);outline-offset:-1.5px}
+#razao tbody tr[aria-current="true"]{box-shadow:inset 3px 0 0 var(--stamp)}
+.sym{font-weight:600;text-transform:uppercase}
+.name{color:var(--muted);font-size:12px;margin-left:8px}
+.spark{display:block}
+.kill{background:transparent;border:0;color:var(--muted);font-family:inherit;font-size:14px;line-height:1;padding:2px 5px;cursor:pointer}
+.kill:hover{color:var(--loss)}
+
+.cell-in{
+  font-family:'IBM Plex Mono',monospace;font-size:13.5px;color:var(--ink);
+  background:transparent;border:0;border-bottom:1px dashed var(--rule);
+  text-align:right;width:104px;padding:2px;font-variant-numeric:tabular-nums;
+}
+.cell-in:hover{border-bottom-color:var(--ink)}
+.cell-in:focus{border-bottom:1px solid var(--stamp);outline:0;background:#FBFCF7}
+.cell-in::placeholder{color:var(--rule)}
+
+.part{display:flex;align-items:center;justify-content:flex-end;gap:7px}
+.part i{display:block;height:7px;background:var(--ink);min-width:1px}
+
+.results{list-style:none;margin-top:10px;border-top:1px solid var(--rule);max-height:250px;overflow-y:auto}
+.results li{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:7px 4px;border-bottom:1px solid var(--rule)}
+.results li:nth-child(even){background:var(--bar)}
+.rank{font-family:'IBM Plex Sans Condensed',sans-serif;font-size:11px;color:var(--muted)}
+
+.strip{
+  font-family:'IBM Plex Sans Condensed',sans-serif;font-size:13px;padding:9px 13px;
+  border:1px solid var(--loss);color:var(--loss);margin:14px 0;display:none;
+}
+.strip.on{display:block}
+.toast{
+  position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:var(--ink);color:var(--paper);
+  padding:10px 18px;font-family:'IBM Plex Sans Condensed',sans-serif;font-size:13px;letter-spacing:.06em;
+  opacity:0;pointer-events:none;transition:opacity .18s;z-index:50;max-width:90vw;text-align:center;
+}
+.toast.on{opacity:1}
+.empty{font-family:'IBM Plex Sans Condensed',sans-serif;color:var(--muted);padding:24px 0;text-align:center}
+
+details{margin-top:16px}
+summary{
+  font-family:'IBM Plex Sans Condensed',sans-serif;font-size:12px;font-weight:600;
+  letter-spacing:.12em;text-transform:uppercase;color:var(--muted);cursor:pointer;
+}
+summary:hover{color:var(--ink)}
+.panel{padding-top:12px;display:flex;flex-direction:column;gap:10px;align-items:flex-start}
+.aviso{font-family:'IBM Plex Sans Condensed',sans-serif;font-size:12px;color:var(--muted);margin-top:8px}
+
+footer{
+  padding-top:22px;font-family:'IBM Plex Sans Condensed',sans-serif;font-size:12px;color:var(--muted);
+  display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;
+}
+
+@media (max-width:760px){
+  :root{--sheet-pad:16px}
+  body{padding:12px 6px 40px}
+  .sheet{padding:var(--sheet-pad)}
+  .sheet::before,.sheet::after{display:none}
+  .saldo{min-width:106px;padding-right:12px}
+  .saldo dd{font-size:15px}
+  .plot{height:200px}
+  .cell-in{width:84px}
+  .hide-sm{display:none}
+}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.001ms!important;transition-duration:.001ms!important}}
+</style>
+</head>
+<body>
+
+<main class="sheet">
+
+  <div class="masthead">
+    <h1>Livro-razão de criptoativos</h1>
+    <p class="folio">
+      <span>Folha <b id="folio">—</b></span>
+      <span>Apurado em <b id="apurado">—</b></span>
+      <span class="chipset" role="group" aria-label="Moeda de referência">
+        <button class="chip" data-moeda="usd" aria-pressed="true">USD</button>
+        <button class="chip" data-moeda="brl">BRL</button>
+      </span>
+    </p>
+  </div>
+
+  <div id="erro" class="strip" role="alert"></div>
+
+  <!-- ══════ PATRIMÔNIO ══════ -->
+  <section>
+    <div class="sec-head">
+      <h2>Patrimônio</h2>
+      <p class="note" id="patrimonio-nota">—</p>
+    </div>
+
+    <div id="patrimonio-vazio" class="empty" hidden>
+      Nenhuma posição informada ainda.<br>
+      Abra <b>Posições</b> na razão geral abaixo e preencha quantidade e preço médio.
+    </div>
+
+    <div id="patrimonio-bloco" hidden>
+      <div class="destaque">
+        <div>
+          <p class="eyebrow">Valor de mercado</p>
+          <p class="total num" id="pat-total">—</p>
+        </div>
+        <dl class="saldos" id="pat-saldos"></dl>
+      </div>
+
+      <p class="eyebrow">Composição</p>
+      <div class="composicao" id="composicao"></div>
+      <div class="comp-legenda" id="comp-legenda"></div>
+
+      <div style="margin-top:24px">
+        <div class="sec-head">
+          <h2 style="font-size:12px">Evolução do patrimônio</h2>
+          <p class="note" id="hist-nota">—</p>
+        </div>
+        <div class="plot baixo"><canvas id="c-patrimonio"></canvas></div>
+        <div class="legend" id="hist-legenda"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════ RAZÃO GERAL ══════ -->
+  <section>
+    <div class="sec-head">
+      <h2>Razão geral</h2>
+      <p class="note" id="razao-nota">—</p>
+    </div>
+
+    <div class="toolbar">
+      <span class="chipset" role="group" aria-label="Modo de exibição">
+        <button class="chip" data-modo="cotacoes" aria-pressed="true">Cotações</button>
+        <button class="chip" data-modo="posicoes">Posições</button>
+      </span>
+      <button class="ghost" id="copiar">Copiar tabela</button>
+      <button class="ghost" id="atualizar">Atualizar cotações</button>
+      <span class="chipset"><button class="chip" id="auto">Atualização automática</button></span>
+    </div>
+
+    <div class="table-wrap">
+      <table id="razao">
+        <thead id="razao-cab"></thead>
+        <tbody id="razao-corpo"></tbody>
+        <tfoot id="razao-rodape"></tfoot>
+      </table>
+    </div>
+    <p class="aviso" id="aviso-cambio" hidden></p>
+
+    <details>
+      <summary>Gerenciar ativos e dados</summary>
+      <div class="panel">
+        <div class="field" style="width:100%">
+          <label for="busca">Adicionar ativo</label>
+          <input type="search" id="busca" placeholder="bitcoin, sol, render…" autocomplete="off">
+        </div>
+        <ul class="results" id="resultados" hidden></ul>
+
+        <div class="field" style="width:100%">
+          <label for="lista">Lista de ativos (IDs da CoinGecko, separados por vírgula)</label>
+          <textarea id="lista" rows="4" spellcheck="false"></textarea>
+        </div>
+        <div class="toolbar" style="margin:0">
+          <button class="solid" id="aplicar-lista">Aplicar lista</button>
+          <button class="ghost" id="restaurar">Restaurar padrão</button>
+          <button class="ghost" id="exportar">Exportar carteira</button>
+          <button class="ghost" id="importar">Importar carteira</button>
+          <input type="file" id="arquivo" accept="application/json" hidden>
+        </div>
+        <p class="aviso">
+          A exportação inclui lista, quantidades, preços médios e histórico de patrimônio.
+          Guarde o arquivo antes de limpar os dados do navegador.
+        </p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ══════ CONTA ANALÍTICA ══════ -->
+  <div class="divider">
+    <span class="eyebrow">Conta analítica</span>
+    <strong id="foco-nome">—</strong>
+  </div>
+
+  <div class="destaque" style="padding:22px 0 20px">
+    <div>
+      <p class="eyebrow">Cotação de fechamento</p>
+      <p class="total num" id="preco">—</p>
+      <span id="foco-posicao" class="aviso"></span>
+    </div>
+    <dl class="saldos" id="variacoes"></dl>
+  </div>
+
+  <section>
+    <div class="sec-head">
+      <h2>Semana corrente</h2>
+      <p class="note">Últimos 7 dias · leitura de hora em hora</p>
+    </div>
+    <div class="plot"><canvas id="c-semana"></canvas></div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <h2>Exercício anual</h2>
+      <p class="note" id="ano-nota">365 dias · fechamento diário</p>
+    </div>
+    <div class="toolbar">
+      <span class="eyebrow" style="align-self:center">Comparar com</span>
+      <span class="chipset" id="comparar"></span>
+    </div>
+    <div class="plot"><canvas id="c-ano"></canvas></div>
+    <div class="legend" id="legenda"></div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <h2>Período selecionado</h2>
+      <p class="note" id="periodo-nota">—</p>
+    </div>
+    <div class="toolbar">
+      <span class="chipset" role="group" aria-label="Atalhos de período">
+        <button class="chip" data-dias="7">7 dias</button>
+        <button class="chip" data-dias="30">30 dias</button>
+        <button class="chip" data-dias="90">90 dias</button>
+        <button class="chip" data-dias="365" aria-pressed="true">1 ano</button>
+      </span>
+      <div class="field"><label for="de">De</label><input type="date" id="de"></div>
+      <div class="field"><label for="ate">Até</label><input type="date" id="ate"></div>
+      <button class="solid" id="aplicar-datas">Aplicar datas</button>
+    </div>
+    <div class="plot"><canvas id="c-periodo"></canvas></div>
+  </section>
+
+  <section class="last">
+    <div class="sec-head">
+      <h2>Série histórica</h2>
+      <button class="ghost" id="csv">Baixar CSV</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th class="lead sortable" data-col="d" aria-sort="descending">Data</th>
+            <th class="sortable" data-col="p">Fechamento</th>
+            <th class="sortable" data-col="v">Variação</th>
+            <th class="sortable hide-sm" data-col="vol">Volume 24 h</th>
+            <th class="sortable hide-sm" data-col="mc">Capitalização</th>
+          </tr>
+        </thead>
+        <tbody id="serie-corpo"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer>
+    <span>CoinGecko API pública, sem chave · dados guardados neste navegador</span>
+    <span>Plano gratuito: histórico limitado a 365 dias</span>
+  </footer>
+</main>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+/* ══════════════════════════════════════════════════════════
+   1. ARMAZENAMENTO
+   ══════════════════════════════════════════════════════════ */
+const disco = (() => {
+  try { localStorage.setItem('_t','1'); localStorage.removeItem('_t'); return localStorage; }
+  catch { return null; }
+})();
+const memoria = {};
+
+const store = {
+  ler(chave, padrao){
+    const cru = disco ? disco.getItem(chave) : memoria[chave];
+    if (!cru) return padrao;
+    try { return JSON.parse(cru); } catch { return padrao; }
+  },
+  gravar(chave, valor){
+    const cru = JSON.stringify(valor);
+    if (disco) { try { disco.setItem(chave, cru); return; } catch {} }
+    memoria[chave] = cru;
+  }
+};
+
+const TTL = 5 * 60 * 1000;
+const cache = {
+  ler(c){ const o = store.ler('tmp:' + c, null); return (o && Date.now() - o.t < TTL) ? o.v : null; },
+  gravar(c, v){ store.gravar('tmp:' + c, { t: Date.now(), v }); }
+};
+
+/* ══════════════════════════════════════════════════════════
+   2. API
+   ══════════════════════════════════════════════════════════ */
+const API = 'https://api.coingecko.com/api/v3';
+const espera = ms => new Promise(r => setTimeout(r, ms));
+
+async function buscar(caminho, chave, { semCache = false } = {}){
+  if (!semCache){ const g = cache.ler(chave); if (g) return g; }
+  for (let i = 0; i < 3; i++){
+    const resp = await fetch(API + caminho);
+    if (resp.ok){ const d = await resp.json(); cache.gravar(chave, d); return d; }
+    if (resp.status === 429){ await espera(1500 * (i + 1)); continue; }
+    throw new Error('A CoinGecko respondeu ' + resp.status + '.');
+  }
+  throw new Error('Limite de requisições atingido. Aguarde cerca de um minuto.');
+}
+
+/* ══════════════════════════════════════════════════════════
+   3. ESTADO
+   posicoes: { [id]: { qtd, pmUsd } }
+   O preço médio é guardado sempre em dólar — fonte única de verdade.
+   A exibição em real usa o câmbio corrente, o que é uma aproximação:
+   para apuração fiscal, cada aporte deveria carregar o câmbio da sua data.
+   ══════════════════════════════════════════════════════════ */
+const PADRAO = ['bitcoin','ethereum','solana','chainlink','render-token','injective-protocol',
+  'celestia','immutable-x','pendle','thorchain','uniswap','maker','ondo-finance',
+  'akash-network','the-open-network','ronin','axie-infinity','usd-coin'];
+
+const estado = {
+  moeda:     store.ler('cfg:moeda', 'usd'),
+  modo:      store.ler('cfg:modo', 'cotacoes'),
+  lista:     store.ler('carteira', PADRAO),
+  posicoes:  store.ler('posicoes', {}),
+  historico: store.ler('historico', []),
+  foco:      store.ler('cfg:foco', 'bitcoin'),
+  mercado: [], ano: [], periodo: [], comparar: [],
+  fx: 1,
+  ordemRazao: { col:'mc', desc:true },
+  ordemSerie: { col:'d', desc:true },
+  auto: null
+};
+
+/* ══════════════════════════════════════════════════════════
+   4. FORMATAÇÃO
+   ══════════════════════════════════════════════════════════ */
+const simbolo = () => estado.moeda === 'brl' ? 'R$' : 'US$';
+const taxa    = () => estado.moeda === 'brl' ? estado.fx : 1;
+
+function dinheiro(v, casasFixas){
+  if (v == null || !isFinite(v)) return '—';
+  const casas = casasFixas ?? (Math.abs(v) >= 1 ? 2 : Math.abs(v) >= 0.01 ? 4 : 8);
+  return simbolo() + ' ' + v.toLocaleString('pt-BR', { minimumFractionDigits:casas, maximumFractionDigits:casas });
+}
+const curto = v => (v == null || !isFinite(v)) ? '—' :
+  simbolo() + ' ' + v.toLocaleString('pt-BR', { notation:'compact', maximumFractionDigits:1 });
+const pct = n => (n == null || !isFinite(n)) ? '—' :
+  (n >= 0 ? '+' : '−') + Math.abs(n).toFixed(2).replace('.', ',') + '%';
+const cls = n => n == null ? '' : n >= 0 ? 'up' : 'down';
+const qtdTexto = q => q ? q.toLocaleString('pt-BR', { maximumFractionDigits:8 }) : '';
+const numero = txt => {
+  const n = parseFloat(String(txt).replace(/\s/g,'').replace(/\./g,'').replace(',','.'));
+  return isFinite(n) && n > 0 ? n : 0;
+};
+
+const fmtDia  = new Intl.DateTimeFormat('pt-BR', { day:'2-digit', month:'2-digit', year:'2-digit' });
+const fmtHora = new Intl.DateTimeFormat('pt-BR', { day:'2-digit', month:'2-digit', hour:'2-digit' });
+
+function toast(msg){
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('on');
+  clearTimeout(toast._t); toast._t = setTimeout(() => el.classList.remove('on'), 2600);
+}
+function erro(msg){
+  const el = document.getElementById('erro');
+  el.textContent = msg; el.classList.add('on');
+  clearTimeout(erro._t); erro._t = setTimeout(() => el.classList.remove('on'), 9000);
+}
+
+/* ══════════════════════════════════════════════════════════
+   5. GRÁFICOS
+   ══════════════════════════════════════════════════════════ */
+Chart.register({
+  id:'greenbar',
+  beforeDatasetsDraw(chart){
+    const { ctx, chartArea:a, scales:{ y } } = chart;
+    const marcas = y.ticks.map(t => y.getPixelForValue(t.value));
+    ctx.save(); ctx.fillStyle = '#E0E9D8';
+    for (let i = 0; i < marcas.length - 1; i += 2){
+      const topo = Math.max(marcas[i+1], a.top), base = Math.min(marcas[i], a.bottom);
+      if (base > topo) ctx.fillRect(a.left, topo, a.right - a.left, base - topo);
+    }
+    ctx.restore();
+  }
+});
+Chart.defaults.font.family = "'IBM Plex Mono', monospace";
+Chart.defaults.font.size = 11;
+Chart.defaults.color = '#6B7566';
+
+const TRACOS = [
+  { cor:'#1A1F18', dash:[] },
+  { cor:'#C1621B', dash:[7,4] },
+  { cor:'#2E6B3C', dash:[2,3] },
+  { cor:'#7A5C99', dash:[9,3,2,3] },
+  { cor:'#8A7A4E', dash:[4,4] },
+  { cor:'#4E6F8A', dash:[1,3] }
+];
+const grafico = {};
+
+function desenhar(alvo, rotulos, series, { indice = false } = {}){
+  if (grafico[alvo]) grafico[alvo].destroy();
+  grafico[alvo] = new Chart(document.getElementById(alvo), {
+    type:'line',
+    data:{ labels:rotulos, datasets: series.map((s, i) => ({
+      label:s.nome, data:s.valores,
+      borderColor:TRACOS[i % TRACOS.length].cor,
+      borderDash:TRACOS[i % TRACOS.length].dash,
+      borderWidth:1.6, pointRadius:0, pointHoverRadius:4,
+      pointHoverBackgroundColor:TRACOS[i % TRACOS.length].cor, tension:0, spanGaps:true
+    })) },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      animation: matchMedia('(prefers-reduced-motion: reduce)').matches ? false : { duration:420 },
+      interaction:{ mode:'index', intersect:false },
+      plugins:{
+        legend:{ display:false },
+        tooltip:{
+          backgroundColor:'#1A1F18', borderColor:'#C1621B', borderWidth:1, cornerRadius:0,
+          padding:10, titleColor:'#F4F5EE', bodyColor:'#F4F5EE', displayColors:series.length > 1,
+          callbacks:{ label: c => (series.length > 1 ? c.dataset.label + '  ' : '') +
+            (indice ? c.parsed.y.toFixed(1) : dinheiro(c.parsed.y)) }
+        }
+      },
+      scales:{
+        x:{ grid:{ display:false }, border:{ color:'#1A1F18' },
+            ticks:{ maxRotation:0, autoSkip:true, maxTicksLimit:7 } },
+        y:{ position:'right', grid:{ display:false }, border:{ display:false },
+            ticks:{ maxTicksLimit:6, callback: v => indice ? v.toFixed(0) : curto(v) } }
+      }
+    }
+  });
+}
+
+function legendaDe(series, alvo){
+  document.getElementById(alvo).innerHTML = series.length > 1
+    ? series.map((s, i) => `<span><i style="border-top-style:${TRACOS[i].dash.length ? 'dashed' : 'solid'};border-color:${TRACOS[i].cor}"></i>${s.nome}</span>`).join('')
+    : '';
+}
+
+function sparkline(valores){
+  if (!valores || valores.length < 2) return '';
+  const passo = Math.max(1, Math.floor(valores.length / 40));
+  const p = valores.filter((_, i) => i % passo === 0);
+  const min = Math.min(...p), max = Math.max(...p), amp = max - min || 1;
+  const pts = p.map((v, i) =>
+    `${(i / (p.length - 1) * 118 + 1).toFixed(1)},${(26 - (v - min) / amp * 24).toFixed(1)}`).join(' ');
+  const cor = p.at(-1) >= p[0] ? '#2E6B3C' : '#A63328';
+  return `<svg class="spark" width="120" height="28" viewBox="0 0 120 28" aria-hidden="true">
+    <polyline points="${pts}" fill="none" stroke="${cor}" stroke-width="1.4"/></svg>`;
+}
+
+/* ══════════════════════════════════════════════════════════
+   6. APURAÇÃO DA CARTEIRA
+   ══════════════════════════════════════════════════════════ */
+function apurar(){
+  const t = taxa();
+  const linhas = estado.mercado.map(m => {
+    const p = estado.posicoes[m.id] || { qtd:0, pmUsd:0 };
+    const qtd = p.qtd || 0;
+    const pm = (p.pmUsd || 0) * t;
+    const valor = qtd * (m.price ?? 0);
+    const custo = qtd * pm;
+    const res = custo > 0 ? valor - custo : null;
+    const ganho24 = (m.c24 == null || !valor) ? 0 : valor - valor / (1 + m.c24 / 100);
+    return { ...m, qtd, pm, valor, custo, res,
+             resPct: custo > 0 ? (valor - custo) / custo * 100 : null, ganho24 };
+  });
+  const valor = linhas.reduce((s, l) => s + l.valor, 0);
+  const custo = linhas.reduce((s, l) => s + l.custo, 0);
+  const g24   = linhas.reduce((s, l) => s + l.ganho24, 0);
+  linhas.forEach(l => l.part = valor > 0 ? l.valor / valor * 100 : 0);
+  return {
+    linhas, valor, custo, g24,
+    resultado:    custo > 0 ? valor - custo : null,
+    resultadoPct: custo > 0 ? (valor - custo) / custo * 100 : null,
+    g24Pct: (valor - g24) > 0 ? g24 / (valor - g24) * 100 : null
+  };
+}
+
+function registrarSnapshot(valor, custo){
+  if (!(valor > 0)) return;
+  const hoje = new Date().toISOString().slice(0, 10);
+  const t = taxa();
+  const h = estado.historico.filter(s => s.d !== hoje);
+  h.push({ d: hoje, v: valor / t, c: custo / t });   // sempre gravado em dólar
+  h.sort((a, b) => a.d.localeCompare(b.d));
+  estado.historico = h.slice(-730);
+  store.gravar('historico', estado.historico);
+}
+
+/* ══════════════════════════════════════════════════════════
+   7. RENDERIZAÇÃO
+   ══════════════════════════════════════════════════════════ */
+const CABECALHOS = {
+  cotacoes: [
+    { col:'symbol', rot:'Ativo', lead:true },
+    { col:'price',  rot:'Cotação' },
+    { col:'c24',    rot:'24 h' },
+    { col:'c7',     rot:'7 d', sm:true },
+    { col:'c30',    rot:'30 d', sm:true },
+    { col:null,     rot:'7 dias', sm:true },
+    { col:'mc',     rot:'Capitalização', sm:true },
+    { col:null,     rot:'' }
+  ],
+  posicoes: [
+    { col:'symbol', rot:'Ativo', lead:true },
+    { col:'qtd',    rot:'Quantidade' },
+    { col:'pm',     rot:'Preço médio' },
+    { col:'price',  rot:'Cotação', sm:true },
+    { col:'valor',  rot:'Valor' },
+    { col:'custo',  rot:'Custo', sm:true },
+    { col:'res',    rot:'Resultado' },
+    { col:'part',   rot:'Part.', sm:true },
+    { col:null,     rot:'' }
+  ]
+};
+
+function renderRazao(){
+  const apuracao = apurar();
+  const modo = estado.modo;
+  const cabs = CABECALHOS[modo];
+  let { col, desc } = estado.ordemRazao;
+  if (!cabs.some(h => h.col === col)) col = modo === 'posicoes' ? 'valor' : 'mc';
+
+  document.getElementById('razao-cab').innerHTML = '<tr>' + cabs.map(h => {
+    const classes = [h.lead && 'lead', h.col && 'sortable', h.sm && 'hide-sm'].filter(Boolean).join(' ');
+    return `<th class="${classes}" ${h.col ? `data-col="${h.col}"` : ''}` +
+           `${h.col === col ? ` aria-sort="${desc ? 'descending' : 'ascending'}"` : ''}>${h.rot}</th>`;
+  }).join('') + '</tr>';
+
+  const linhas = [...apuracao.linhas].sort((a, b) => {
+    const x = a[col], y = b[col];
+    if (typeof x === 'string') return desc ? y.localeCompare(x) : x.localeCompare(y);
+    return desc ? (y ?? -Infinity) - (x ?? -Infinity) : (x ?? Infinity) - (y ?? Infinity);
+  });
+
+  const corpo = document.getElementById('razao-corpo');
+  const rodape = document.getElementById('razao-rodape');
+
+  if (!linhas.length){
+    corpo.innerHTML = `<tr><td colspan="9" class="empty">Nenhum ativo acompanhado. Abra "Gerenciar ativos e dados" para adicionar.</td></tr>`;
+    rodape.innerHTML = '';
+    document.getElementById('razao-nota').textContent = 'Carteira vazia';
+    return;
+  }
+
+  const cellAtivo = m => `<td class="lead"><span class="sym">${m.symbol}</span><span class="name hide-sm">${m.name}</span></td>`;
+  const cellRemover = m => `<td><button class="kill" data-remove="${m.id}" aria-label="Remover ${m.symbol}">×</button></td>`;
+
+  if (modo === 'cotacoes'){
+    corpo.innerHTML = linhas.map(m => `
+      <tr data-id="${m.id}" ${m.id === estado.foco ? 'aria-current="true"' : ''}>
+        ${cellAtivo(m)}
+        <td>${dinheiro(m.price)}</td>
+        <td class="${cls(m.c24)}">${pct(m.c24)}</td>
+        <td class="hide-sm ${cls(m.c7)}">${pct(m.c7)}</td>
+        <td class="hide-sm ${cls(m.c30)}">${pct(m.c30)}</td>
+        <td class="hide-sm">${sparkline(m.spark)}</td>
+        <td class="hide-sm">${curto(m.mc)}</td>
+        ${cellRemover(m)}
+      </tr>`).join('');
+    rodape.innerHTML = '';
+  } else {
+    corpo.innerHTML = linhas.map(m => `
+      <tr data-id="${m.id}" ${m.id === estado.foco ? 'aria-current="true"' : ''}>
+        ${cellAtivo(m)}
+        <td><input class="cell-in" inputmode="decimal" data-campo="qtd" data-id="${m.id}"
+              value="${qtdTexto(m.qtd)}" placeholder="0" aria-label="Quantidade de ${m.symbol}"></td>
+        <td><input class="cell-in" inputmode="decimal" data-campo="pm" data-id="${m.id}"
+              value="${m.pm ? m.pm.toLocaleString('pt-BR', { maximumFractionDigits:8 }) : ''}"
+              placeholder="0,00" aria-label="Preço médio de ${m.symbol}"></td>
+        <td class="hide-sm">${dinheiro(m.price)}</td>
+        <td>${m.valor > 0 ? dinheiro(m.valor, 2) : '—'}</td>
+        <td class="hide-sm">${m.custo > 0 ? dinheiro(m.custo, 2) : '—'}</td>
+        <td class="${cls(m.res)}">${m.res == null ? '—' : dinheiro(m.res, 2) + `<small>${pct(m.resPct)}</small>`}</td>
+        <td class="hide-sm"><span class="part"><i style="width:${Math.round(m.part * 0.45)}px"></i>${
+          m.part ? m.part.toFixed(1).replace('.', ',') + '%' : '—'}</span></td>
+        ${cellRemover(m)}
+      </tr>`).join('');
+
+    rodape.innerHTML = `<tr>
+      <td class="lead">Totais</td><td></td><td></td><td class="hide-sm"></td>
+      <td>${dinheiro(apuracao.valor, 2)}</td>
+      <td class="hide-sm">${apuracao.custo > 0 ? dinheiro(apuracao.custo, 2) : '—'}</td>
+      <td class="${cls(apuracao.resultado)}">${apuracao.resultado == null ? '—' : dinheiro(apuracao.resultado, 2)}</td>
+      <td class="hide-sm">${apuracao.valor > 0 ? '100%' : '—'}</td><td></td></tr>`;
+  }
+
+  document.getElementById('razao-nota').textContent =
+    `${linhas.length} ativo${linhas.length > 1 ? 's' : ''} · clique na linha para abrir a conta analítica`;
+
+  const av = document.getElementById('aviso-cambio');
+  if (modo === 'posicoes' && estado.moeda === 'brl'){
+    av.hidden = false;
+    av.textContent = 'Preços médios convertidos pelo câmbio corrente (US$ 1 ≈ R$ ' +
+      estado.fx.toFixed(2).replace('.', ',') + '). Para apuração fiscal, use o câmbio da data de cada aporte.';
+  } else av.hidden = true;
+}
+
+function renderPatrimonio(){
+  const a = apurar();
+  const tem = a.valor > 0;
+  document.getElementById('patrimonio-vazio').hidden = tem;
+  document.getElementById('patrimonio-bloco').hidden = !tem;
+  document.getElementById('patrimonio-nota').textContent = tem
+    ? `${a.linhas.filter(l => l.qtd > 0).length} posições abertas` : 'Sem posições informadas';
+  if (!tem) return;
+
+  registrarSnapshot(a.valor, a.custo);
+
+  const partes = dinheiro(a.valor, 2).split(',');
+  document.getElementById('pat-total').innerHTML = partes[0] + '<span class="cents">,' + partes[1] + '</span>';
+
+  document.getElementById('pat-saldos').innerHTML = [
+    { rot:'Custo de aquisição', val: a.custo > 0 ? dinheiro(a.custo, 2) : '—' },
+    { rot:'Resultado em aberto', val: a.resultado == null ? '—' : dinheiro(a.resultado, 2),
+      sub: a.resultadoPct, c: cls(a.resultado) },
+    { rot:'Variação 24 h', val: dinheiro(a.g24, 2), sub: a.g24Pct, c: cls(a.g24) }
+  ].map(s => `<div class="saldo"><dt>${s.rot}</dt>
+      <dd class="num ${s.c || ''}">${s.val}${s.sub != null ? `<small>${pct(s.sub)}</small>` : ''}</dd></div>`).join('');
+
+  const comps = a.linhas.filter(l => l.valor > 0).sort((x, y) => y.valor - x.valor);
+  const topo = comps.slice(0, 6);
+  const resto = comps.slice(6).reduce((s, l) => s + l.part, 0);
+  const fatias = [
+    ...topo.map((l, i) => ({ rot:l.symbol.toUpperCase(), p:l.part, cor:TRACOS[i].cor })),
+    ...(resto > 0 ? [{ rot:'Outros', p:resto, cor:'#B4C2AC' }] : [])
+  ];
+  document.getElementById('composicao').innerHTML = fatias.map(f =>
+    `<div style="width:${f.p}%;background:${f.cor}" title="${f.rot} ${f.p.toFixed(1)}%"></div>`).join('');
+  document.getElementById('comp-legenda').innerHTML = fatias.map(f =>
+    `<span><i style="background:${f.cor}"></i>${f.rot} ${f.p.toFixed(1).replace('.', ',')}%</span>`).join('');
+
+  const h = estado.historico.slice(-120);
+  const nota = document.getElementById('hist-nota');
+  if (h.length < 2){
+    nota.textContent = 'Um ponto é gravado por dia de uso — a curva aparece a partir do segundo dia.';
+    if (grafico['c-patrimonio']){ grafico['c-patrimonio'].destroy(); delete grafico['c-patrimonio']; }
+    document.getElementById('hist-legenda').innerHTML = '';
+  } else {
+    nota.textContent = `${h.length} dias registrados`;
+    const t = taxa();
+    const series = [
+      { nome:'Valor de mercado', valores: h.map(s => s.v * t) },
+      { nome:'Custo', valores: h.map(s => s.c * t) }
+    ];
+    desenhar('c-patrimonio', h.map(s => fmtDia.format(new Date(s.d + 'T12:00:00'))), series);
+    legendaDe(series, 'hist-legenda');
+  }
+}
+
+function renderCotacao(){
+  const m = estado.mercado.find(x => x.id === estado.foco);
+  document.getElementById('foco-nome').textContent = m ? `${m.name} (${m.symbol.toUpperCase()})` : estado.foco;
+  document.getElementById('apurado').textContent =
+    new Intl.DateTimeFormat('pt-BR', { dateStyle:'short', timeStyle:'short' }).format(new Date());
+  if (!m){ document.getElementById('preco').textContent = '—'; return; }
+
+  const partes = dinheiro(m.price).split(',');
+  document.getElementById('preco').innerHTML = partes[0] + '<span class="cents">,' + partes[1] + '</span>';
+
+  const l = apurar().linhas.find(x => x.id === estado.foco);
+  document.getElementById('foco-posicao').innerHTML = (l && l.qtd > 0)
+    ? `Posição: ${qtdTexto(l.qtd)} ${m.symbol.toUpperCase()} · ${dinheiro(l.valor, 2)}` +
+      (l.res == null ? '' : ` · resultado <b class="${cls(l.res)}">${dinheiro(l.res, 2)} (${pct(l.resPct)})</b>`)
+    : 'Sem posição informada para este ativo.';
+
+  document.getElementById('variacoes').innerHTML =
+    [['24 horas', m.c24], ['7 dias', m.c7], ['30 dias', m.c30], ['1 ano', m.c1y]]
+    .map(([rot, v]) => `<div class="saldo" style="min-width:94px"><dt>${rot}</dt>
+      <dd class="num ${cls(v)}">${pct(v)}</dd></div>`).join('');
+}
+
+function renderComparar(){
+  const outros = estado.mercado.filter(m => m.id !== estado.foco).slice(0, 12);
+  document.getElementById('comparar').innerHTML = outros.map(m =>
+    `<button class="chip" data-cmp="${m.id}" ${estado.comparar.includes(m.id) ? 'aria-pressed="true"' : ''}>${m.symbol}</button>`
+  ).join('') || '<span class="note">Adicione outros ativos à carteira</span>';
+}
+
+function renderPeriodo(serie, nota){
+  estado.periodo = serie;
+  document.getElementById('periodo-nota').textContent = nota;
+  const diario = serie.length > 1 && (serie.at(-1).t - serie[0].t) > 90 * 864e5;
+  desenhar('c-periodo', serie.map(p => (diario ? fmtDia : fmtHora).format(new Date(p.t))),
+    [{ nome:'Fechamento', valores: serie.map(p => p.preco) }]);
+  renderSerie();
+}
+
+function renderSerie(){
+  const { col, desc } = estado.ordemSerie;
+  const linhas = estado.periodo.map((p, i, arr) => ({
+    d:p.t, p:p.preco,
+    v: i > 0 ? ((p.preco - arr[i-1].preco) / arr[i-1].preco) * 100 : null,
+    vol:p.vol, mc:p.mc
+  }));
+  linhas.sort((a, b) => desc ? (b[col] ?? -Infinity) - (a[col] ?? -Infinity)
+                             : (a[col] ?? Infinity) - (b[col] ?? Infinity));
+  document.getElementById('serie-corpo').innerHTML = linhas.map(l => `
+    <tr>
+      <td class="lead">${fmtDia.format(new Date(l.d))}</td>
+      <td>${dinheiro(l.p)}</td>
+      <td class="${cls(l.v)}">${pct(l.v)}</td>
+      <td class="hide-sm">${curto(l.vol)}</td>
+      <td class="hide-sm">${curto(l.mc)}</td>
+    </tr>`).join('');
+}
+
+function renderTudo(){ renderPatrimonio(); renderRazao(); renderCotacao(); }
+
+/* ══════════════════════════════════════════════════════════
+   8. CARGA DE DADOS
+   ══════════════════════════════════════════════════════════ */
+const normalizar = b => b.prices.map((p, i) => ({
+  t:p[0], preco:p[1],
+  vol: b.total_volumes?.[i]?.[1] ?? null,
+  mc:  b.market_caps?.[i]?.[1] ?? null
+}));
+
+async function carregarCambio(){
+  try {
+    const r = await buscar('/simple/price?ids=bitcoin&vs_currencies=usd,brl', 'fx');
+    if (r?.bitcoin?.usd && r?.bitcoin?.brl) estado.fx = r.bitcoin.brl / r.bitcoin.usd;
+  } catch { /* mantém 1; afeta só a conversão de custo em real */ }
+}
+
+async function carregarRazao({ fresco = false } = {}){
+  if (!estado.lista.length){ estado.mercado = []; renderTudo(); return; }
+  const ids = estado.lista.join(',');
+  const bruto = await buscar(
+    `/coins/markets?vs_currency=${estado.moeda}&ids=${ids}&sparkline=true` +
+    `&price_change_percentage=24h,7d,30d,1y&per_page=250`,
+    `mkt_${estado.moeda}_${ids}`, { semCache:fresco });
+
+  estado.mercado = bruto.map(c => ({
+    id:c.id, symbol:c.symbol, name:c.name, price:c.current_price,
+    c24:c.price_change_percentage_24h_in_currency,
+    c7: c.price_change_percentage_7d_in_currency,
+    c30:c.price_change_percentage_30d_in_currency,
+    c1y:c.price_change_percentage_1y_in_currency,
+    mc:c.market_cap, spark:c.sparkline_in_7d?.price
+  }));
+
+  const perdidos = estado.lista.filter(id => !estado.mercado.some(m => m.id === id));
+  if (perdidos.length) erro('IDs não reconhecidos pela CoinGecko: ' + perdidos.join(', '));
+
+  if (!estado.mercado.some(m => m.id === estado.foco) && estado.mercado.length){
+    estado.foco = estado.mercado[0].id;
+    store.gravar('cfg:foco', estado.foco);
+  }
+  renderTudo();
+  renderComparar();
+}
+
+async function carregarFoco(){
+  const id = estado.foco, v = estado.moeda;
+  const semana = normalizar(await buscar(`/coins/${id}/market_chart?vs_currency=${v}&days=7`, `sem_${v}_${id}`));
+  desenhar('c-semana', semana.map(p => fmtHora.format(new Date(p.t))),
+    [{ nome:'Fechamento', valores: semana.map(p => p.preco) }]);
+
+  estado.ano = normalizar(await buscar(
+    `/coins/${id}/market_chart?vs_currency=${v}&days=365&interval=daily`, `ano_${v}_${id}`));
+
+  await desenharAno();
+  renderPeriodo(estado.ano, 'Últimos 365 dias · recorte da série anual já carregada');
+  document.querySelectorAll('[data-dias]').forEach(c => c.removeAttribute('aria-pressed'));
+  document.querySelector('[data-dias="365"]').setAttribute('aria-pressed', 'true');
+}
+
+async function desenharAno(){
+  const base = estado.mercado.find(m => m.id === estado.foco);
+  const indice = estado.comparar.length > 0;
+  const norm = arr => { const p0 = arr.find(v => v != null); return arr.map(v => v == null ? null : v / p0 * 100); };
+  const series = [{
+    nome:(base?.symbol || estado.foco).toUpperCase(),
+    valores: indice ? norm(estado.ano.map(p => p.preco)) : estado.ano.map(p => p.preco)
+  }];
+  for (const id of estado.comparar){
+    try {
+      const s = normalizar(await buscar(
+        `/coins/${id}/market_chart?vs_currency=${estado.moeda}&days=365&interval=daily`,
+        `ano_${estado.moeda}_${id}`));
+      const m = estado.mercado.find(x => x.id === id);
+      series.push({ nome:(m?.symbol || id).toUpperCase(),
+        valores: norm(estado.ano.map((_, i) => s[i]?.preco ?? null)) });
+    } catch (e){ erro(e.message); }
+  }
+  desenhar('c-ano', estado.ano.map(p => fmtDia.format(new Date(p.t))), series, { indice });
+  document.getElementById('ano-nota').textContent = indice
+    ? '365 dias · índice base 100 no início do período' : '365 dias · fechamento diário';
+  legendaDe(series, 'legenda');
+}
+
+/* ══════════════════════════════════════════════════════════
+   9. INTERAÇÕES
+   ══════════════════════════════════════════════════════════ */
+// edição de posições — grava no evento change (ao sair do campo), não a cada tecla
+document.getElementById('razao-corpo').addEventListener('change', ev => {
+  const campo = ev.target.closest('[data-campo]');
+  if (!campo) return;
+  const id = campo.dataset.id;
+  const p = estado.posicoes[id] || { qtd:0, pmUsd:0 };
+  const v = numero(campo.value);
+  if (campo.dataset.campo === 'qtd') p.qtd = v; else p.pmUsd = v / taxa();
+  if (p.qtd > 0 || p.pmUsd > 0) estado.posicoes[id] = p; else delete estado.posicoes[id];
+  store.gravar('posicoes', estado.posicoes);
+  renderTudo();
+});
+
+// foco e remoção
+document.getElementById('razao-corpo').addEventListener('click', async ev => {
+  const rem = ev.target.closest('[data-remove]');
+  if (rem){
+    ev.stopPropagation();
+    const id = rem.dataset.remove;
+    if (estado.posicoes[id]?.qtd > 0 &&
+        !confirm('Este ativo tem posição informada. Remover mesmo assim?')) return;
+    estado.lista = estado.lista.filter(x => x !== id);
+    estado.comparar = estado.comparar.filter(x => x !== id);
+    delete estado.posicoes[id];
+    store.gravar('carteira', estado.lista);
+    store.gravar('posicoes', estado.posicoes);
+    sincronizarTextarea();
+    try { await carregarRazao({ fresco:true }); } catch (e){ erro(e.message); }
+    return;
+  }
+  if (ev.target.closest('.cell-in')) return;
+  const linha = ev.target.closest('tr[data-id]');
+  if (!linha || linha.dataset.id === estado.foco) return;
+  estado.foco = linha.dataset.id;
+  estado.comparar = [];
+  store.gravar('cfg:foco', estado.foco);
+  renderRazao(); renderCotacao(); renderComparar();
+  try { await carregarFoco(); } catch (e){ erro(e.message); }
+});
+
+// ordenação
+document.getElementById('razao-cab').addEventListener('click', ev => {
+  const th = ev.target.closest('th.sortable');
+  if (!th) return;
+  const o = estado.ordemRazao;
+  estado.ordemRazao = { col:th.dataset.col, desc: o.col === th.dataset.col ? !o.desc : true };
+  renderRazao();
+});
+document.querySelectorAll('.last thead th.sortable').forEach(th => {
+  th.addEventListener('click', () => {
+    const o = estado.ordemSerie;
+    estado.ordemSerie = { col:th.dataset.col, desc: o.col === th.dataset.col ? !o.desc : true };
+    document.querySelectorAll('.last thead th').forEach(x => x.removeAttribute('aria-sort'));
+    th.setAttribute('aria-sort', estado.ordemSerie.desc ? 'descending' : 'ascending');
+    renderSerie();
+  });
+});
+
+// modo da razão
+document.querySelectorAll('[data-modo]').forEach(chip => {
+  chip.addEventListener('click', () => {
+    estado.modo = chip.dataset.modo;
+    estado.ordemRazao = { col: estado.modo === 'posicoes' ? 'valor' : 'mc', desc:true };
+    store.gravar('cfg:modo', estado.modo);
+    document.querySelectorAll('[data-modo]').forEach(c => c.removeAttribute('aria-pressed'));
+    chip.setAttribute('aria-pressed', 'true');
+    renderRazao();
+  });
+});
+
+// moeda de referência
+document.querySelectorAll('[data-moeda]').forEach(chip => {
+  chip.addEventListener('click', async () => {
+    if (chip.dataset.moeda === estado.moeda) return;
+    estado.moeda = chip.dataset.moeda;
+    store.gravar('cfg:moeda', estado.moeda);
+    document.querySelectorAll('[data-moeda]').forEach(c => c.removeAttribute('aria-pressed'));
+    chip.setAttribute('aria-pressed', 'true');
+    try { await carregarCambio(); await carregarRazao(); await carregarFoco(); }
+    catch (e){ erro(e.message); }
+  });
+});
+
+// comparação base 100
+document.getElementById('comparar').addEventListener('click', async ev => {
+  const chip = ev.target.closest('[data-cmp]');
+  if (!chip) return;
+  const id = chip.dataset.cmp;
+  if (estado.comparar.includes(id)) estado.comparar = estado.comparar.filter(x => x !== id);
+  else if (estado.comparar.length >= 3) return toast('Máximo de três ativos em comparação.');
+  else estado.comparar.push(id);
+  renderComparar();
+  try { await desenharAno(); } catch (e){ erro(e.message); }
+});
+
+// atalhos de período
+document.querySelectorAll('[data-dias]').forEach(chip => {
+  chip.addEventListener('click', () => {
+    if (!estado.ano.length) return;
+    document.querySelectorAll('[data-dias]').forEach(c => c.removeAttribute('aria-pressed'));
+    chip.setAttribute('aria-pressed', 'true');
+    document.getElementById('de').value = ''; document.getElementById('ate').value = '';
+    const dias = Number(chip.dataset.dias);
+    renderPeriodo(estado.ano.filter(p => p.t >= Date.now() - dias * 864e5),
+      `Últimos ${dias} dias · recorte da série anual já carregada`);
+  });
+});
+
+document.getElementById('aplicar-datas').addEventListener('click', async () => {
+  const de = document.getElementById('de').value, ate = document.getElementById('ate').value;
+  if (!de || !ate) return erro('Preencha as duas datas para aplicar o período.');
+  const inicio = new Date(de + 'T00:00:00'), fim = new Date(ate + 'T23:59:59');
+  if (inicio >= fim) return erro('A data inicial precisa ser anterior à data final.');
+  if (fim > new Date()) return erro('A data final não pode estar no futuro.');
+  if (inicio < new Date(Date.now() - 365 * 864e5))
+    return erro('O plano gratuito da CoinGecko cobre apenas os últimos 365 dias.');
+  document.querySelectorAll('[data-dias]').forEach(c => c.removeAttribute('aria-pressed'));
+  const from = Math.floor(inicio / 1000), to = Math.floor(fim / 1000);
+  try {
+    const b = await buscar(
+      `/coins/${estado.foco}/market_chart/range?vs_currency=${estado.moeda}&from=${from}&to=${to}`,
+      `rng_${estado.moeda}_${estado.foco}_${from}_${to}`);
+    renderPeriodo(normalizar(b), `${fmtDia.format(inicio)} a ${fmtDia.format(fim)} · consultado na CoinGecko`);
+  } catch (e){ erro(e.message); }
+});
+
+// busca de ativos
+let debounce;
+document.getElementById('busca').addEventListener('input', function(){
+  const termo = this.value.trim(), ul = document.getElementById('resultados');
+  clearTimeout(debounce);
+  if (termo.length < 2){ ul.hidden = true; return; }
+  debounce = setTimeout(async () => {
+    try {
+      const r = await buscar(`/search?query=${encodeURIComponent(termo)}`, `busca_${termo.toLowerCase()}`);
+      const achados = (r.coins || []).slice(0, 20);
+      ul.hidden = false;
+      ul.innerHTML = achados.length ? achados.map(c => `
+        <li><span><span class="sym">${c.symbol}</span><span class="name">${c.name}</span>
+          ${c.market_cap_rank ? `<span class="rank">nº ${c.market_cap_rank}</span>` : ''}</span>
+          <button class="ghost" data-add="${c.id}" ${estado.lista.includes(c.id) ? 'disabled' : ''}>
+            ${estado.lista.includes(c.id) ? 'Na carteira' : 'Adicionar'}</button></li>`).join('')
+        : '<li class="empty">Nenhum ativo encontrado.</li>';
+    } catch (e){ erro(e.message); }
+  }, 400);
+});
+
+document.getElementById('resultados').addEventListener('click', async ev => {
+  const btn = ev.target.closest('[data-add]');
+  if (!btn || estado.lista.includes(btn.dataset.add)) return;
+  estado.lista.push(btn.dataset.add);
+  store.gravar('carteira', estado.lista);
+  btn.disabled = true; btn.textContent = 'Na carteira';
+  sincronizarTextarea();
+  try { await carregarRazao({ fresco:true }); toast('Ativo adicionado à carteira.'); }
+  catch (e){ erro(e.message); }
+});
+
+// lista em texto
+function sincronizarTextarea(){ document.getElementById('lista').value = estado.lista.join(', '); }
+
+document.getElementById('aplicar-lista').addEventListener('click', async () => {
+  const ids = document.getElementById('lista').value
+    .split(/[\s,;]+/).map(s => s.trim().toLowerCase()).filter(Boolean);
+  estado.lista = [...new Set(ids)];
+  estado.comparar = [];
+  store.gravar('carteira', estado.lista);
+  sincronizarTextarea();
+  try { await carregarRazao({ fresco:true }); await carregarFoco(); toast('Lista aplicada.'); }
+  catch (e){ erro(e.message); }
+});
+
+document.getElementById('restaurar').addEventListener('click', async () => {
+  estado.lista = [...PADRAO]; estado.comparar = [];
+  store.gravar('carteira', estado.lista);
+  sincronizarTextarea();
+  try { await carregarRazao({ fresco:true }); await carregarFoco(); toast('Lista padrão restaurada.'); }
+  catch (e){ erro(e.message); }
+});
+
+// exportar / importar
+document.getElementById('exportar').addEventListener('click', () => {
+  const pacote = { versao:1, exportadoEm:new Date().toISOString(),
+    lista:estado.lista, posicoes:estado.posicoes, historico:estado.historico };
+  const url = URL.createObjectURL(new Blob([JSON.stringify(pacote, null, 2)], { type:'application/json' }));
+  const a = document.createElement('a');
+  a.href = url; a.download = `carteira-${new Date().toISOString().slice(0,10)}.json`; a.click();
+  URL.revokeObjectURL(url);
+  toast('Carteira exportada.');
+});
+
+document.getElementById('importar').addEventListener('click', () => document.getElementById('arquivo').click());
+document.getElementById('arquivo').addEventListener('change', async ev => {
+  const arq = ev.target.files?.[0];
+  if (!arq) return;
+  try {
+    const p = JSON.parse(await arq.text());
+    if (!Array.isArray(p.lista)) throw new Error('formato');
+    estado.lista = p.lista;
+    estado.posicoes = p.posicoes || {};
+    estado.historico = Array.isArray(p.historico) ? p.historico : [];
+    store.gravar('carteira', estado.lista);
+    store.gravar('posicoes', estado.posicoes);
+    store.gravar('historico', estado.historico);
+    sincronizarTextarea();
+    await carregarRazao({ fresco:true });
+    await carregarFoco();
+    toast('Carteira importada.');
+  } catch { erro('Arquivo inválido. Use um JSON gerado pela exportação.'); }
+  ev.target.value = '';
+});
+
+// copiar tabela em TSV
+document.getElementById('copiar').addEventListener('click', async () => {
+  const linhas = [...apurar().linhas].sort((a, b) => a.symbol.localeCompare(b.symbol));
+  const n = v => typeof v === 'number' && isFinite(v) ? v.toLocaleString('pt-BR', { maximumFractionDigits:8 }) : '';
+  const texto = estado.modo === 'posicoes'
+    ? 'Ativo\tQuantidade\tPreço médio\tCotação\tValor\tResultado\n' +
+      linhas.map(l => [l.symbol.toUpperCase(), n(l.qtd), n(l.pm), n(l.price), n(l.valor), n(l.res)].join('\t')).join('\n')
+    : linhas.map(l => `${l.symbol.toUpperCase()}\t${
+        l.price?.toLocaleString('pt-BR', { minimumFractionDigits:4, maximumFractionDigits:4 }) ?? ''}`).join('\n');
+  try { await navigator.clipboard.writeText(texto); toast('Tabela copiada para a área de transferência.'); }
+  catch { erro('O navegador bloqueou a cópia. Selecione a tabela manualmente.'); }
+});
+
+// atualização
+document.getElementById('atualizar').addEventListener('click', async () => {
+  try { await carregarCambio(); await carregarRazao({ fresco:true }); toast('Cotações atualizadas.'); }
+  catch (e){ erro(e.message); }
+});
+
+document.getElementById('auto').addEventListener('click', function(){
+  if (estado.auto){
+    clearInterval(estado.auto); estado.auto = null;
+    this.removeAttribute('aria-pressed'); toast('Atualização automática desligada.');
+  } else {
+    estado.auto = setInterval(() => carregarRazao({ fresco:true }).catch(e => erro(e.message)), 60000);
+    this.setAttribute('aria-pressed', 'true'); toast('Atualizando a cada 60 segundos.');
+  }
+});
+
+// CSV da série histórica
+document.getElementById('csv').addEventListener('click', () => {
+  const cab = `data;fechamento_${estado.moeda};volume_24h;capitalizacao\n`;
+  const corpo = estado.periodo.map(p =>
+    [new Date(p.t).toISOString().slice(0,10), p.preco, p.vol ?? '', p.mc ?? ''].join(';')).join('\n');
+  const url = URL.createObjectURL(new Blob(['\uFEFF' + cab + corpo], { type:'text/csv;charset=utf-8' }));
+  const a = document.createElement('a');
+  a.href = url; a.download = `${estado.foco}-serie.csv`; a.click();
+  URL.revokeObjectURL(url);
+});
+
+/* ══════════════════════════════════════════════════════════
+   10. INÍCIO
+   ══════════════════════════════════════════════════════════ */
+(async function iniciar(){
+  const hoje = new Date();
+  document.getElementById('folio').textContent =
+    String(hoje.getDate()).padStart(2,'0') + String(hoje.getMonth()+1).padStart(2,'0');
+  document.getElementById('ate').value = hoje.toISOString().slice(0,10);
+  document.getElementById('de').value = new Date(Date.now() - 30*864e5).toISOString().slice(0,10);
+  document.querySelectorAll('[data-moeda]').forEach(c =>
+    c.dataset.moeda === estado.moeda ? c.setAttribute('aria-pressed','true') : c.removeAttribute('aria-pressed'));
+  document.querySelectorAll('[data-modo]').forEach(c =>
+    c.dataset.modo === estado.modo ? c.setAttribute('aria-pressed','true') : c.removeAttribute('aria-pressed'));
+  estado.ordemRazao = { col: estado.modo === 'posicoes' ? 'valor' : 'mc', desc:true };
+  sincronizarTextarea();
+
+  try {
+    await carregarCambio();
+    await carregarRazao();
+    await carregarFoco();
+  } catch (e){ erro(e.message + ' Recarregue a página em instantes.'); }
+})();
+</script>
+</body>
+</html>

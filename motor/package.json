@@ -1,0 +1,25 @@
+{
+  "name": "@razao/motor",
+  "version": "0.1.0",
+  "description": "",
+  "main": "./src/index.ts",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "decimal.js": "^10.6.0"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.11"
+  },
+  "type": "module"
+}
