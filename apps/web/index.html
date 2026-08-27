@@ -9,6 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@400;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="motor.js"></script>
 <style>
 :root{
   --paper:#F4F5EE; --bar:#E0E9D8; --ink:#1A1F18; --muted:#6B7566; --rule:#B4C2AC;
@@ -205,6 +206,47 @@ footer{
   display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;
 }
 
+/* formulário de lançamento */
+.form-grid{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+  gap:14px 18px;width:100%;margin-bottom:14px;
+}
+.form-grid .field{width:100%}
+select,input[type="number"],input[type="text"]{
+  font-family:'IBM Plex Mono',monospace;font-size:14px;color:var(--ink);
+  background:transparent;border:0;border-bottom:1.5px solid var(--ink);
+  padding:5px 2px;width:100%;border-radius:0;
+}
+select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--ink) 50%),linear-gradient(135deg,var(--ink) 50%,transparent 50%);
+  background-position:calc(100% - 9px) 12px,calc(100% - 4px) 12px;background-size:5px 5px;background-repeat:no-repeat;padding-right:18px}
+.oculto{display:none!important}
+
+/* apuração fiscal */
+.disclaimer{
+  border:2px solid var(--stamp);padding:12px 14px;margin-bottom:18px;
+  font-family:'IBM Plex Sans Condensed',sans-serif;font-size:12.5px;line-height:1.5;color:var(--ink);
+}
+.disclaimer b{
+  display:block;font-size:11px;letter-spacing:.18em;text-transform:uppercase;
+  color:var(--stamp);margin-bottom:5px;
+}
+.avisos{list-style:none;margin-top:12px}
+.avisos li{
+  font-family:'IBM Plex Sans Condensed',sans-serif;font-size:12px;color:var(--muted);
+  padding:3px 0 3px 14px;position:relative;
+}
+.avisos li::before{content:"!";position:absolute;left:0;color:var(--stamp);font-weight:600}
+.tag{
+  font-family:'IBM Plex Sans Condensed',sans-serif;font-size:10.5px;font-weight:600;
+  letter-spacing:.1em;text-transform:uppercase;border:1px solid var(--rule);
+  padding:1px 6px;color:var(--muted);white-space:nowrap;
+}
+.tag.doc{border-color:var(--gain);color:var(--gain)}
+.tag.est{border-color:var(--stamp);color:var(--stamp)}
+.tag.aus{border-color:var(--loss);color:var(--loss)}
+.barra-doc{display:flex;align-items:center;justify-content:flex-end;gap:6px}
+.barra-doc i{display:block;height:7px;background:var(--gain);min-width:1px}
+
 @media (max-width:760px){
   :root{--sheet-pad:16px}
   body{padding:12px 6px 40px}
@@ -325,6 +367,162 @@ footer{
         </p>
       </div>
     </details>
+  </section>
+
+  <!-- ══════ LIVRO DE LANÇAMENTOS ══════ -->
+  <section>
+    <div class="sec-head">
+      <h2>Livro de lançamentos</h2>
+      <p class="note" id="livro-nota">—</p>
+    </div>
+
+    <details id="painel-lancamento">
+      <summary>Novo lançamento</summary>
+      <div class="panel">
+        <div class="form-grid">
+          <div class="field">
+            <label for="f-tipo">Operação</label>
+            <select id="f-tipo">
+              <option value="compra">Compra</option>
+              <option value="venda">Venda</option>
+              <option value="permuta">Permuta (troca cripto por cripto)</option>
+              <option value="rendimento">Rendimento / staking</option>
+              <option value="airdrop">Airdrop</option>
+              <option value="transferencia_entrada">Transferência recebida</option>
+              <option value="transferencia_saida">Transferência enviada</option>
+              <option value="taxa">Taxa paga no ativo</option>
+              <option value="perda">Perda definitiva</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="f-ativo" id="rot-ativo">Ativo</label>
+            <select id="f-ativo"></select>
+          </div>
+          <div class="field">
+            <label for="f-data">Data</label>
+            <input type="date" id="f-data">
+          </div>
+          <div class="field">
+            <label for="f-qtd" id="rot-qtd">Quantidade</label>
+            <input type="text" inputmode="decimal" id="f-qtd" placeholder="0,00000000">
+          </div>
+          <div class="field" id="c-ativo2">
+            <label for="f-ativo2">Ativo recebido</label>
+            <select id="f-ativo2"></select>
+          </div>
+          <div class="field" id="c-qtd2">
+            <label for="f-qtd2">Quantidade recebida</label>
+            <input type="text" inputmode="decimal" id="f-qtd2" placeholder="0,00000000">
+          </div>
+          <div class="field" id="c-preco">
+            <label for="f-preco" id="rot-preco">Preço unitário</label>
+            <input type="text" inputmode="decimal" id="f-preco" placeholder="0,00">
+          </div>
+          <div class="field" id="c-moeda">
+            <label for="f-moeda">Moeda</label>
+            <select id="f-moeda"><option value="BRL">BRL</option><option value="USD">USD</option></select>
+          </div>
+          <div class="field oculto" id="c-cambio">
+            <label for="f-cambio">Câmbio da data (BRL por USD)</label>
+            <input type="text" inputmode="decimal" id="f-cambio" placeholder="5,00">
+          </div>
+          <div class="field" id="c-taxa">
+            <label for="f-taxa">Taxa</label>
+            <input type="text" inputmode="decimal" id="f-taxa" placeholder="0,00">
+          </div>
+          <div class="field">
+            <label for="f-regime">Regime</label>
+            <select id="f-regime">
+              <option value="nacional">Nacional</option>
+              <option value="exterior">Exterior / DeFi</option>
+            </select>
+          </div>
+          <div class="field" id="c-confianca">
+            <label for="f-confianca">Comprovação</label>
+            <select id="f-confianca">
+              <option value="documentado">Tenho extrato</option>
+              <option value="estimado">Reconstruído pela data</option>
+              <option value="arbitrado">Valor de memória</option>
+              <option value="ausente">Não sei o custo</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="f-corretora">Corretora / custódia</label>
+            <input type="text" id="f-corretora" placeholder="opcional">
+          </div>
+        </div>
+        <div class="toolbar" style="margin:0">
+          <button class="solid" id="f-gravar">Lançar</button>
+          <span class="aviso" id="f-dica"></span>
+        </div>
+      </div>
+    </details>
+
+    <div class="table-wrap" style="margin-top:16px">
+      <table>
+        <thead>
+          <tr>
+            <th class="lead">Data</th>
+            <th class="lead">Operação</th>
+            <th class="lead">Ativo</th>
+            <th>Quantidade</th>
+            <th class="hide-sm">Preço</th>
+            <th class="hide-sm">Regime</th>
+            <th class="hide-sm">Comprovação</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="livro-corpo"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ══════ APURAÇÃO FISCAL ══════ -->
+  <section>
+    <div class="sec-head">
+      <h2>Apuração fiscal</h2>
+      <p class="note">Valores sempre em reais, conforme a legislação</p>
+    </div>
+
+    <div class="disclaimer" id="disclaimer"></div>
+    <ul class="avisos" id="avisos-motor"></ul>
+
+    <div style="margin-top:20px">
+      <p class="eyebrow">Regime nacional — apuração mensal</p>
+      <div class="table-wrap" style="margin-top:8px">
+        <table>
+          <thead>
+            <tr>
+              <th class="lead">Competência</th>
+              <th>Alienações</th>
+              <th class="hide-sm">Ganho bruto</th>
+              <th class="hide-sm">Resultado líquido</th>
+              <th>Base</th>
+              <th>Imposto</th>
+            </tr>
+          </thead>
+          <tbody id="fiscal-nacional"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div style="margin-top:24px">
+      <p class="eyebrow">Regime exterior — apuração anual</p>
+      <div class="table-wrap" style="margin-top:8px">
+        <table>
+          <thead>
+            <tr>
+              <th class="lead">Ano</th>
+              <th>Alienações</th>
+              <th class="hide-sm">Resultado líquido</th>
+              <th>Base</th>
+              <th>Imposto</th>
+            </tr>
+          </thead>
+          <tbody id="fiscal-exterior"></tbody>
+        </table>
+      </div>
+    </div>
   </section>
 
   <!-- ══════ CONTA ANALÍTICA ══════ -->
@@ -459,10 +657,9 @@ async function buscar(caminho, chave, { semCache = false } = {}){
 
 /* ══════════════════════════════════════════════════════════
    3. ESTADO
-   posicoes: { [id]: { qtd, pmUsd } }
-   O preço médio é guardado sempre em dólar — fonte única de verdade.
-   A exibição em real usa o câmbio corrente, o que é uma aproximação:
-   para apuração fiscal, cada aporte deveria carregar o câmbio da sua data.
+   Os lançamentos são o fato. Saldo, custo médio e resultado são derivados
+   pelo motor (motor.js), que trabalha sempre em reais e usa o câmbio
+   gravado em cada lançamento — nunca o câmbio de hoje.
    ══════════════════════════════════════════════════════════ */
 const PADRAO = ['bitcoin','ethereum','solana','chainlink','render-token','injective-protocol',
   'celestia','immutable-x','pendle','thorchain','uniswap','maker','ondo-finance',
@@ -472,7 +669,8 @@ const estado = {
   moeda:     store.ler('cfg:moeda', 'usd'),
   modo:      store.ler('cfg:modo', 'cotacoes'),
   lista:     store.ler('carteira', PADRAO),
-  posicoes:  store.ler('posicoes', {}),
+  lancamentos: store.ler('lancamentos', []),
+  apuracao:  { posicoes: [], alienacoes: [], avisos: [] },
   historico: store.ler('historico', []),
   foco:      store.ler('cfg:foco', 'bitcoin'),
   mercado: [], ano: [], periodo: [], comparar: [],
@@ -603,28 +801,54 @@ function sparkline(valores){
 /* ══════════════════════════════════════════════════════════
    6. APURAÇÃO DA CARTEIRA
    ══════════════════════════════════════════════════════════ */
+/** Decimal do motor -> número simples para exibição. */
+const num = v => (v && typeof v.toNumber === 'function') ? v.toNumber() : Number(v || 0);
+
+/** Roda o motor sobre os lançamentos. Erros viram mensagem, não tela branca. */
+function rodarMotor(){
+  try {
+    estado.apuracao = Motor.apurar(estado.lancamentos);
+    estado.erroMotor = null;
+  } catch (e) {
+    estado.apuracao = { posicoes: [], alienacoes: [], avisos: [] };
+    estado.erroMotor = e.message;
+    erro(e.message);
+  }
+}
+
+/** Combina as posições do motor (em BRL) com as cotações do mercado. */
 function apurar(){
-  const t = taxa();
+  const div = estado.moeda === 'brl' ? 1 : (estado.fx || 1);
+  const doMotor = new Map(estado.apuracao.posicoes.map(p => [p.ativoId, p]));
+
   const linhas = estado.mercado.map(m => {
-    const p = estado.posicoes[m.id] || { qtd:0, pmUsd:0 };
-    const qtd = p.qtd || 0;
-    const pm = (p.pmUsd || 0) * t;
+    const p = doMotor.get(m.id);
+    const qtd = p ? num(p.quantidade) : 0;
+    const custo = p ? num(p.custoTotalBrl) / div : 0;
+    const pm = qtd > 0 ? custo / qtd : 0;
     const valor = qtd * (m.price ?? 0);
-    const custo = qtd * pm;
     const res = custo > 0 ? valor - custo : null;
     const ganho24 = (m.c24 == null || !valor) ? 0 : valor - valor / (1 + m.c24 / 100);
-    return { ...m, qtd, pm, valor, custo, res,
-             resPct: custo > 0 ? (valor - custo) / custo * 100 : null, ganho24 };
+    return {
+      ...m, qtd, pm, valor, custo, res,
+      resPct: custo > 0 ? (valor - custo) / custo * 100 : null,
+      doc: p && custo > 0 ? num(p.indiceDocumentacao) : 1,
+      ganho24
+    };
   });
+
   const valor = linhas.reduce((s, l) => s + l.valor, 0);
   const custo = linhas.reduce((s, l) => s + l.custo, 0);
   const g24   = linhas.reduce((s, l) => s + l.ganho24, 0);
+  const custoDoc = linhas.reduce((s, l) => s + l.custo * l.doc, 0);
   linhas.forEach(l => l.part = valor > 0 ? l.valor / valor * 100 : 0);
+
   return {
     linhas, valor, custo, g24,
     resultado:    custo > 0 ? valor - custo : null,
     resultadoPct: custo > 0 ? (valor - custo) / custo * 100 : null,
-    g24Pct: (valor - g24) > 0 ? g24 / (valor - g24) * 100 : null
+    g24Pct: (valor - g24) > 0 ? g24 / (valor - g24) * 100 : null,
+    indiceDoc: custo > 0 ? custoDoc / custo : 1
   };
 }
 
@@ -657,10 +881,10 @@ const CABECALHOS = {
     { col:'symbol', rot:'Ativo', lead:true },
     { col:'qtd',    rot:'Quantidade' },
     { col:'pm',     rot:'Preço médio' },
-    { col:'price',  rot:'Cotação', sm:true },
     { col:'valor',  rot:'Valor' },
     { col:'custo',  rot:'Custo', sm:true },
     { col:'res',    rot:'Resultado' },
+    { col:'doc',    rot:'Comprovação', sm:true },
     { col:'part',   rot:'Part.', sm:true },
     { col:null,     rot:'' }
   ]
@@ -689,7 +913,7 @@ function renderRazao(){
   const rodape = document.getElementById('razao-rodape');
 
   if (!linhas.length){
-    corpo.innerHTML = `<tr><td colspan="9" class="empty">Nenhum ativo acompanhado. Abra "Gerenciar ativos e dados" para adicionar.</td></tr>`;
+    corpo.innerHTML = `<tr><td colspan="10" class="empty">Nenhum ativo acompanhado. Abra "Gerenciar ativos e dados" para adicionar.</td></tr>`;
     rodape.innerHTML = '';
     document.getElementById('razao-nota').textContent = 'Carteira vazia';
     return;
@@ -715,25 +939,24 @@ function renderRazao(){
     corpo.innerHTML = linhas.map(m => `
       <tr data-id="${m.id}" ${m.id === estado.foco ? 'aria-current="true"' : ''}>
         ${cellAtivo(m)}
-        <td><input class="cell-in" inputmode="decimal" data-campo="qtd" data-id="${m.id}"
-              value="${qtdTexto(m.qtd)}" placeholder="0" aria-label="Quantidade de ${m.symbol}"></td>
-        <td><input class="cell-in" inputmode="decimal" data-campo="pm" data-id="${m.id}"
-              value="${m.pm ? m.pm.toLocaleString('pt-BR', { maximumFractionDigits:8 }) : ''}"
-              placeholder="0,00" aria-label="Preço médio de ${m.symbol}"></td>
-        <td class="hide-sm">${dinheiro(m.price)}</td>
+        <td>${m.qtd > 0 ? qtdTexto(m.qtd) : '—'}</td>
+        <td>${m.pm > 0 ? dinheiro(m.pm) : '—'}</td>
         <td>${m.valor > 0 ? dinheiro(m.valor, 2) : '—'}</td>
         <td class="hide-sm">${m.custo > 0 ? dinheiro(m.custo, 2) : '—'}</td>
         <td class="${cls(m.res)}">${m.res == null ? '—' : dinheiro(m.res, 2) + `<small>${pct(m.resPct)}</small>`}</td>
+        <td class="hide-sm">${m.qtd > 0 ? `<span class="barra-doc">
+          <i style="width:${Math.round(m.doc * 40)}px"></i>${Math.round(m.doc * 100)}%</span>` : '—'}</td>
         <td class="hide-sm"><span class="part"><i style="width:${Math.round(m.part * 0.45)}px"></i>${
           m.part ? m.part.toFixed(1).replace('.', ',') + '%' : '—'}</span></td>
         ${cellRemover(m)}
       </tr>`).join('');
 
     rodape.innerHTML = `<tr>
-      <td class="lead">Totais</td><td></td><td></td><td class="hide-sm"></td>
+      <td class="lead">Totais</td><td></td><td></td>
       <td>${dinheiro(apuracao.valor, 2)}</td>
       <td class="hide-sm">${apuracao.custo > 0 ? dinheiro(apuracao.custo, 2) : '—'}</td>
       <td class="${cls(apuracao.resultado)}">${apuracao.resultado == null ? '—' : dinheiro(apuracao.resultado, 2)}</td>
+      <td class="hide-sm">${Math.round(apuracao.indiceDoc * 100)}%</td>
       <td class="hide-sm">${apuracao.valor > 0 ? '100%' : '—'}</td><td></td></tr>`;
   }
 
@@ -741,10 +964,10 @@ function renderRazao(){
     `${linhas.length} ativo${linhas.length > 1 ? 's' : ''} · clique na linha para abrir a conta analítica`;
 
   const av = document.getElementById('aviso-cambio');
-  if (modo === 'posicoes' && estado.moeda === 'brl'){
+  if (modo === 'posicoes' && apuracao.custo > 0 && apuracao.indiceDoc < 1){
     av.hidden = false;
-    av.textContent = 'Preços médios convertidos pelo câmbio corrente (US$ 1 ≈ R$ ' +
-      estado.fx.toFixed(2).replace('.', ',') + '). Para apuração fiscal, use o câmbio da data de cada aporte.';
+    av.textContent = `${Math.round(apuracao.indiceDoc * 100)}% do custo da carteira tem comprovação documental. ` +
+      `O restante é estimativa e o resultado apurado deve ser lido como tal.`;
   } else av.hidden = true;
 }
 
@@ -857,7 +1080,94 @@ function renderSerie(){
     </tr>`).join('');
 }
 
-function renderTudo(){ renderPatrimonio(); renderRazao(); renderCotacao(); }
+const ROTULO_TIPO = {
+  compra:'Compra', venda:'Venda',
+  permuta_saida:'Permuta (saída)', permuta_entrada:'Permuta (entrada)',
+  transferencia_entrada:'Transf. recebida', transferencia_saida:'Transf. enviada',
+  rendimento:'Rendimento', airdrop:'Airdrop', bonificacao:'Bonificação',
+  taxa:'Taxa', perda:'Perda'
+};
+const ROTULO_CONF = {
+  documentado:['doc','Documentado'], estimado:['est','Estimado'],
+  arbitrado:['est','De memória'], ausente:['aus','Sem custo']
+};
+
+const reais = v => (v == null || !isFinite(num(v))) ? '—' :
+  'R$ ' + num(v).toLocaleString('pt-BR', { minimumFractionDigits:2, maximumFractionDigits:2 });
+
+const simboloDe = id => (estado.mercado.find(m => m.id === id)?.symbol || id).toUpperCase();
+
+function renderLivro(){
+  const corpo = document.getElementById('livro-corpo');
+  const nota = document.getElementById('livro-nota');
+
+  if (!estado.lancamentos.length){
+    corpo.innerHTML = `<tr><td colspan="8" class="empty">
+      Nenhum lançamento registrado. Use "Novo lançamento" para começar o livro.</td></tr>`;
+    nota.textContent = 'Livro vazio';
+    return;
+  }
+
+  const ordenados = [...estado.lancamentos].sort((a, b) => b.ocorridoEm.localeCompare(a.ocorridoEm));
+  corpo.innerHTML = ordenados.map(l => {
+    const [classe, rot] = ROTULO_CONF[l.confianca] || ['', l.confianca];
+    const semPreco = ['transferencia_entrada','transferencia_saida','perda','taxa'].includes(l.tipo);
+    const preco = semPreco ? '—'
+      : (l.moeda === 'BRL' ? 'R$ ' : 'US$ ') +
+        Number(l.precoUnitario).toLocaleString('pt-BR', { maximumFractionDigits:8 });
+    return `<tr>
+      <td class="lead">${fmtDia.format(new Date(l.ocorridoEm))}</td>
+      <td class="lead">${ROTULO_TIPO[l.tipo] || l.tipo}</td>
+      <td class="lead"><span class="sym">${simboloDe(l.ativoId)}</span></td>
+      <td>${Number(l.quantidade).toLocaleString('pt-BR', { maximumFractionDigits:8 })}</td>
+      <td class="hide-sm">${preco}</td>
+      <td class="hide-sm">${l.regime === 'exterior' ? 'Exterior' : 'Nacional'}</td>
+      <td class="hide-sm">${semPreco ? '—' : `<span class="tag ${classe}">${rot}</span>`}</td>
+      <td><button class="kill" data-apagar="${l.id}" aria-label="Remover lançamento">×</button></td>
+    </tr>`;
+  }).join('');
+
+  nota.textContent = `${estado.lancamentos.length} lançamento${estado.lancamentos.length > 1 ? 's' : ''}`;
+}
+
+function renderFiscal(){
+  document.getElementById('disclaimer').innerHTML =
+    '<b>Leia antes de usar</b>' + Motor.AVISO_SIMULACAO;
+
+  const avisos = document.getElementById('avisos-motor');
+  const lista = [...(estado.apuracao.avisos || [])];
+  if (estado.erroMotor) lista.unshift(estado.erroMotor);
+  avisos.innerHTML = [...new Set(lista)].map(a => `<li>${a}</li>`).join('');
+
+  const nac = Motor.simularMensalNacional(estado.apuracao.alienacoes);
+  document.getElementById('fiscal-nacional').innerHTML = nac.length
+    ? nac.map(m => `<tr>
+        <td class="lead">${m.competencia}</td>
+        <td>${reais(m.totalAlienacoesBrl)}</td>
+        <td class="hide-sm">${reais(m.ganhoBrutoBrl)}</td>
+        <td class="hide-sm ${cls(num(m.resultadoLiquidoBrl))}">${reais(m.resultadoLiquidoBrl)}</td>
+        <td>${m.isento ? '<span class="tag doc">Isento</span>' : reais(m.baseCalculoBrl)}</td>
+        <td>${reais(m.impostoBrl)}</td>
+      </tr>`).join('')
+    : '<tr><td colspan="6" class="empty">Nenhuma alienação no regime nacional.</td></tr>';
+
+  const ext = Motor.simularAnualExterior(estado.apuracao.alienacoes);
+  document.getElementById('fiscal-exterior').innerHTML = ext.length
+    ? ext.map(a => `<tr>
+        <td class="lead">${a.ano}</td>
+        <td>${reais(a.totalAlienacoesBrl)}</td>
+        <td class="hide-sm ${cls(num(a.resultadoLiquidoBrl))}">${reais(a.resultadoLiquidoBrl)}</td>
+        <td>${reais(a.baseCalculoBrl)}</td>
+        <td>${reais(a.impostoBrl)}</td>
+      </tr>`).join('')
+    : '<tr><td colspan="5" class="empty">Nenhuma alienação no regime exterior.</td></tr>';
+}
+
+function renderTudo(){
+  rodarMotor();
+  renderPatrimonio(); renderRazao(); renderCotacao();
+  renderLivro(); renderFiscal(); popularSelects();
+}
 
 /* ══════════════════════════════════════════════════════════
    8. CARGA DE DADOS
@@ -945,37 +1255,22 @@ async function desenharAno(){
 /* ══════════════════════════════════════════════════════════
    9. INTERAÇÕES
    ══════════════════════════════════════════════════════════ */
-// edição de posições — grava no evento change (ao sair do campo), não a cada tecla
-document.getElementById('razao-corpo').addEventListener('change', ev => {
-  const campo = ev.target.closest('[data-campo]');
-  if (!campo) return;
-  const id = campo.dataset.id;
-  const p = estado.posicoes[id] || { qtd:0, pmUsd:0 };
-  const v = numero(campo.value);
-  if (campo.dataset.campo === 'qtd') p.qtd = v; else p.pmUsd = v / taxa();
-  if (p.qtd > 0 || p.pmUsd > 0) estado.posicoes[id] = p; else delete estado.posicoes[id];
-  store.gravar('posicoes', estado.posicoes);
-  renderTudo();
-});
-
 // foco e remoção
 document.getElementById('razao-corpo').addEventListener('click', async ev => {
   const rem = ev.target.closest('[data-remove]');
   if (rem){
     ev.stopPropagation();
     const id = rem.dataset.remove;
-    if (estado.posicoes[id]?.qtd > 0 &&
-        !confirm('Este ativo tem posição informada. Remover mesmo assim?')) return;
+    const temLancamento = estado.lancamentos.some(l => l.ativoId === id);
+    if (temLancamento &&
+        !confirm('Este ativo tem lançamentos no livro. Remover da lista? Os lançamentos permanecem.')) return;
     estado.lista = estado.lista.filter(x => x !== id);
     estado.comparar = estado.comparar.filter(x => x !== id);
-    delete estado.posicoes[id];
     store.gravar('carteira', estado.lista);
-    store.gravar('posicoes', estado.posicoes);
     sincronizarTextarea();
     try { await carregarRazao({ fresco:true }); } catch (e){ erro(e.message); }
     return;
   }
-  if (ev.target.closest('.cell-in')) return;
   const linha = ev.target.closest('tr[data-id]');
   if (!linha || linha.dataset.id === estado.foco) return;
   estado.foco = linha.dataset.id;
@@ -1103,6 +1398,136 @@ document.getElementById('resultados').addEventListener('click', async ev => {
   catch (e){ erro(e.message); }
 });
 
+// ═══ livro de lançamentos ═══
+function popularSelects(){
+  const opcoes = estado.lista.map(id =>
+    `<option value="${id}">${simboloDe(id)} — ${id}</option>`).join('');
+  for (const alvo of ['f-ativo', 'f-ativo2']){
+    const el = document.getElementById(alvo);
+    const atual = el.value;
+    el.innerHTML = opcoes;
+    if (atual && estado.lista.includes(atual)) el.value = atual;
+  }
+}
+
+/** Mostra apenas os campos que fazem sentido para a operação escolhida. */
+function ajustarFormulario(){
+  const tipo = document.getElementById('f-tipo').value;
+  const permuta = tipo === 'permuta';
+  const semPreco = ['transferencia_entrada','transferencia_saida','perda','taxa'].includes(tipo);
+
+  document.getElementById('c-ativo2').classList.toggle('oculto', !permuta);
+  document.getElementById('c-qtd2').classList.toggle('oculto', !permuta);
+  document.getElementById('c-preco').classList.toggle('oculto', semPreco);
+  document.getElementById('c-moeda').classList.toggle('oculto', semPreco);
+  document.getElementById('c-taxa').classList.toggle('oculto', semPreco);
+  document.getElementById('c-confianca').classList.toggle('oculto', semPreco);
+  document.getElementById('c-cambio').classList.toggle('oculto',
+    semPreco || document.getElementById('f-moeda').value === 'BRL');
+
+  document.getElementById('rot-ativo').textContent = permuta ? 'Ativo entregue' : 'Ativo';
+  document.getElementById('rot-qtd').textContent = permuta ? 'Quantidade entregue' : 'Quantidade';
+  document.getElementById('rot-preco').textContent = permuta ? 'Valor total da troca' : 'Preço unitário';
+
+  const dicas = {
+    permuta: 'Gera dois lançamentos. O valor da troca realiza ganho no ativo entregue e forma o custo do recebido.',
+    rendimento: 'Entra pelo valor de mercado na data — esse valor vira o custo de aquisição.',
+    airdrop: 'Entra pelo valor de mercado na data.',
+    transferencia_entrada: 'Movimentação entre custódias suas. Não altera saldo nem custo.',
+    transferencia_saida: 'Movimentação entre custódias suas. Não altera saldo nem custo.',
+    taxa: 'Taxa de rede paga no próprio ativo. Reduz a quantidade sem gerar ganho.',
+    perda: 'Baixa definitiva. Reduz quantidade e custo sem gerar ganho tributável.'
+  };
+  document.getElementById('f-dica').textContent = dicas[tipo] || '';
+}
+
+['f-tipo', 'f-moeda'].forEach(id =>
+  document.getElementById(id).addEventListener('change', ajustarFormulario));
+
+document.getElementById('f-gravar').addEventListener('click', () => {
+  const v = id => document.getElementById(id).value.trim();
+  const tipo = v('f-tipo');
+  const data = v('f-data');
+  const qtd = numero(v('f-qtd'));
+  const ativo = v('f-ativo');
+
+  if (!data) return erro('Informe a data da operação.');
+  if (!ativo) return erro('Escolha o ativo.');
+  if (qtd <= 0) return erro('Informe uma quantidade maior que zero.');
+
+  const permuta = tipo === 'permuta';
+  const semPreco = ['transferencia_entrada','transferencia_saida','perda','taxa'].includes(tipo);
+  const preco = numero(v('f-preco'));
+  if (!semPreco && preco <= 0 && v('f-confianca') !== 'ausente')
+    return erro('Informe o preço, ou marque a comprovação como "Não sei o custo".');
+
+  const moeda = semPreco ? 'BRL' : v('f-moeda');
+  const cambio = moeda === 'USD' ? numero(v('f-cambio')) : null;
+  if (moeda === 'USD' && !(cambio > 0))
+    return erro('Operação em dólar precisa do câmbio da data. Consulte a PTAX do Banco Central.');
+
+  const comum = {
+    ocorridoEm: data + 'T12:00:00Z',
+    moeda,
+    cambioBrl: cambio ? String(cambio) : undefined,
+    taxa: semPreco ? undefined : String(numero(v('f-taxa'))),
+    regime: v('f-regime'),
+    origem: 'manual',
+    confianca: semPreco ? 'documentado' : v('f-confianca'),
+    corretora: v('f-corretora') || undefined
+  };
+
+  const marca = Date.now().toString(36);
+  let novos;
+
+  if (permuta){
+    const ativo2 = v('f-ativo2');
+    const qtd2 = numero(v('f-qtd2'));
+    if (!ativo2 || qtd2 <= 0) return erro('Informe o ativo recebido e a quantidade.');
+    if (ativo2 === ativo) return erro('Os dois lados da permuta não podem ser o mesmo ativo.');
+    if (preco <= 0) return erro('Informe o valor total da troca.');
+    const saida = `s${marca}`, entrada = `e${marca}`;
+    novos = [
+      { ...comum, id:saida, ativoId:ativo, tipo:'permuta_saida',
+        quantidade:String(qtd), precoUnitario:String(preco / qtd), parId:entrada },
+      { ...comum, id:entrada, ativoId:ativo2, tipo:'permuta_entrada', taxa:'0',
+        quantidade:String(qtd2), precoUnitario:String(preco / qtd2), parId:saida }
+    ];
+  } else {
+    novos = [{ ...comum, id:`l${marca}`, ativoId:ativo, tipo,
+      quantidade:String(qtd),
+      precoUnitario: semPreco ? undefined : String(preco) }];
+  }
+
+  // Valida antes de gravar: se o motor recusar, nada entra no livro.
+  const anteriores = estado.lancamentos;
+  try {
+    Motor.apurar([...anteriores, ...novos]);
+  } catch (e) {
+    return erro(e.message);
+  }
+
+  estado.lancamentos = [...anteriores, ...novos];
+  store.gravar('lancamentos', estado.lancamentos);
+  ['f-qtd','f-qtd2','f-preco','f-taxa'].forEach(id => document.getElementById(id).value = '');
+  renderTudo();
+  toast(permuta ? 'Permuta lançada em duas pernas.' : 'Lançamento registrado.');
+});
+
+document.getElementById('livro-corpo').addEventListener('click', ev => {
+  const btn = ev.target.closest('[data-apagar]');
+  if (!btn) return;
+  const alvo = estado.lancamentos.find(l => l.id === btn.dataset.apagar);
+  if (!alvo) return;
+  // Permuta é um fato só: apagar uma perna sem a outra deixaria o livro inconsistente.
+  const ids = alvo.parId ? [alvo.id, alvo.parId] : [alvo.id];
+  const rotulo = alvo.parId ? 'Isto remove as duas pernas da permuta. Continuar?' : 'Remover este lançamento?';
+  if (!confirm(rotulo)) return;
+  estado.lancamentos = estado.lancamentos.filter(l => !ids.includes(l.id));
+  store.gravar('lancamentos', estado.lancamentos);
+  renderTudo();
+});
+
 // lista em texto
 function sincronizarTextarea(){ document.getElementById('lista').value = estado.lista.join(', '); }
 
@@ -1128,7 +1553,7 @@ document.getElementById('restaurar').addEventListener('click', async () => {
 // exportar / importar
 document.getElementById('exportar').addEventListener('click', () => {
   const pacote = { versao:1, exportadoEm:new Date().toISOString(),
-    lista:estado.lista, posicoes:estado.posicoes, historico:estado.historico };
+    lista:estado.lista, lancamentos:estado.lancamentos, historico:estado.historico };
   const url = URL.createObjectURL(new Blob([JSON.stringify(pacote, null, 2)], { type:'application/json' }));
   const a = document.createElement('a');
   a.href = url; a.download = `carteira-${new Date().toISOString().slice(0,10)}.json`; a.click();
@@ -1144,10 +1569,10 @@ document.getElementById('arquivo').addEventListener('change', async ev => {
     const p = JSON.parse(await arq.text());
     if (!Array.isArray(p.lista)) throw new Error('formato');
     estado.lista = p.lista;
-    estado.posicoes = p.posicoes || {};
+    estado.lancamentos = Array.isArray(p.lancamentos) ? p.lancamentos : [];
     estado.historico = Array.isArray(p.historico) ? p.historico : [];
     store.gravar('carteira', estado.lista);
-    store.gravar('posicoes', estado.posicoes);
+    store.gravar('lancamentos', estado.lancamentos);
     store.gravar('historico', estado.historico);
     sincronizarTextarea();
     await carregarRazao({ fresco:true });
@@ -1198,8 +1623,44 @@ document.getElementById('csv').addEventListener('click', () => {
 });
 
 /* ══════════════════════════════════════════════════════════
-   10. INÍCIO
+   10. MIGRAÇÃO E INÍCIO
    ══════════════════════════════════════════════════════════ */
+
+/**
+ * Converte quantidades digitadas na versão anterior em lançamentos de abertura.
+ * Custo informado vira 'arbitrado' (valor de memória); custo zero vira 'ausente'.
+ * É a escada de reconstrução em miniatura: nada se perde, mas nada finge
+ * ter comprovação que não tem.
+ */
+function migrarPosicoesAntigas(){
+  if (estado.lancamentos.length) return;
+  const antigas = store.ler('posicoes', {});
+  const ids = Object.keys(antigas).filter(id => (antigas[id]?.qtd || 0) > 0);
+  if (!ids.length) return;
+
+  const data = (estado.historico[0]?.d || new Date().toISOString().slice(0,10)) + 'T12:00:00Z';
+  estado.lancamentos = ids.map(id => {
+    const pmUsd = antigas[id].pmUsd || 0;
+    return {
+      id: `abertura-${id}`,
+      ativoId: id,
+      tipo: 'compra',
+      ocorridoEm: data,
+      quantidade: String(antigas[id].qtd),
+      precoUnitario: String(pmUsd),
+      moeda: 'USD',
+      cambioBrl: String(estado.fx || 1),
+      taxa: '0',
+      regime: 'nacional',
+      origem: 'abertura',
+      confianca: pmUsd > 0 ? 'arbitrado' : 'ausente'
+    };
+  });
+  store.gravar('lancamentos', estado.lancamentos);
+  store.gravar('posicoes-legado', antigas);
+  toast(`${ids.length} posições convertidas em lançamentos de abertura.`);
+}
+
 (async function iniciar(){
   const hoje = new Date();
   document.getElementById('folio').textContent =
@@ -1213,8 +1674,12 @@ document.getElementById('csv').addEventListener('click', () => {
   estado.ordemRazao = { col: estado.modo === 'posicoes' ? 'valor' : 'mc', desc:true };
   sincronizarTextarea();
 
+  document.getElementById('f-data').value = hoje.toISOString().slice(0,10);
+  ajustarFormulario();
+
   try {
     await carregarCambio();
+    migrarPosicoesAntigas();
     await carregarRazao();
     await carregarFoco();
   } catch (e){ erro(e.message + ' Recarregue a página em instantes.'); }
