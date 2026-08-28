@@ -316,6 +316,25 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
 }
 .fechar:hover{color:var(--ink)}
 
+/* ═══ opção com explicação ═══ */
+.opcao{display:flex;gap:11px;align-items:flex-start;cursor:pointer;max-width:660px}
+.opcao input{margin-top:3px;flex:0 0 auto;width:16px;height:16px;accent-color:var(--stamp)}
+.opcao span{
+  font-family:'IBM Plex Sans Condensed',sans-serif;font-size:12.5px;
+  line-height:1.5;color:var(--muted);
+}
+.opcao span b{display:block;color:var(--ink);font-size:13px;margin-bottom:2px}
+.opcao span b + b{display:inline;margin:0}
+
+/* ═══ botão auxiliar dentro de campo ═══ */
+.mini{
+  font-family:'IBM Plex Sans Condensed',sans-serif;font-size:11px;font-weight:600;
+  letter-spacing:.08em;text-transform:uppercase;background:transparent;color:var(--stamp);
+  border:0;padding:3px 0 0;cursor:pointer;text-align:left;text-decoration:underline;
+}
+.mini:hover{color:var(--ink)}
+.mini[disabled]{color:var(--muted);text-decoration:none;cursor:default}
+
 /* ═══ ajuda ═══ */
 .interrogacao{
   width:30px;height:30px;flex:0 0 auto;border:1.5px solid var(--ink);
@@ -524,18 +543,42 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
       <p class="atalho">Clique numa linha para abrir a análise do ativo.</p>
       <p class="aviso" id="aviso-doc" hidden></p>
 
-      <details>
+      <div id="alerta-backup" class="strip" style="border-color:var(--stamp);color:var(--stamp)"></div>
+
+      <details id="painel-backup">
         <summary>Cópia de segurança</summary>
         <div class="panel">
           <p class="aviso" style="margin:0">
             Os dados ficam apenas neste navegador. Exporte de tempos em tempos —
             o arquivo traz lista de ativos, lançamentos e histórico de patrimônio.
           </p>
+          <p class="aviso" id="status-backup" style="margin:0"></p>
           <div class="toolbar" style="margin:0">
             <button class="solid" id="exportar">Exportar carteira</button>
             <button class="ghost" id="importar">Importar carteira</button>
             <input type="file" id="arquivo" accept="application/json" hidden>
           </div>
+        </div>
+      </details>
+
+      <details>
+        <summary>Ajustes de apuração</summary>
+        <div class="panel">
+          <label class="opcao">
+            <input type="checkbox" id="op-compensar">
+            <span>
+              <b>Compensar prejuízos com lucros no mês, no regime nacional</b>
+              Desligado é a leitura conservadora: cada operação é apurada isoladamente e
+              só os ganhos entram na base. Ligado, prejuízos do mês abatem os lucros e o
+              imposto simulado cai. <b>Esta é uma decisão do seu contador, não uma preferência.</b>
+              De um jeito ou de outro, a tela sempre mostra os dois números lado a lado.
+            </span>
+          </label>
+          <p class="aviso" style="margin:0">
+            Limites de isenção e alíquotas não são configuráveis aqui de propósito: são a lei,
+            não preferência do usuário. Quando mudarem, mudam no código, com teste, para todo
+            mundo de uma vez.
+          </p>
         </div>
       </details>
     </section>
@@ -812,6 +855,7 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
       <div class="field" id="c-preco">
         <label for="f-preco" id="rot-preco">Preço unitário</label>
         <input type="text" inputmode="decimal" id="f-preco" placeholder="0,00">
+        <button class="mini" id="buscar-preco" type="button">Buscar cotação da data</button>
       </div>
       <div class="field" id="c-moeda">
         <label for="f-moeda">Moeda</label>
@@ -820,6 +864,7 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
       <div class="field oculto" id="c-cambio">
         <label for="f-cambio">Câmbio da data</label>
         <input type="text" inputmode="decimal" id="f-cambio" placeholder="5,00">
+        <button class="mini" id="buscar-cambio" type="button">Buscar PTAX da data</button>
       </div>
       <div class="field" id="c-taxa">
         <label for="f-taxa">Taxa</label>
@@ -975,7 +1020,17 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
         <p>Na compra, a taxa <b>entra no custo</b> — faz parte do que você pagou pelo bem.
         Na venda, ela é <b>descontada</b> do que você recebeu.</p>
 
+        <h3>Preenchimento automático</h3>
+        <p>Ao lado do preço há <b>Buscar cotação da data</b>: informe o ativo e a data, e o sistema
+        busca quanto aquela moeda valia naquele dia. Se a data for hoje, usa a cotação corrente.
+        O valor entra como sugestão — se o que você realmente pagou foi diferente, corrija.
+        O preço da sua operação é o que está no extrato, não a média do mercado.</p>
+
         <h3>Operações em dólar</h3>
+        <p>Ao lado do câmbio há <b>Buscar PTAX da data</b>, que consulta o Banco Central — a fonte
+        oficial para o fisco. Não há boletim em fim de semana e feriado; nesses casos o sistema usa
+        o último boletim publicado antes da data, que é o critério aceito. Vem preenchida a PTAX de
+        <b>venda</b>; seu contador pode preferir a de compra em alguns casos.</p>
         <p>Preencha o <b>câmbio da data</b>, não o de hoje. Comprou a US$ 20.000 com dólar a R$ 5,00
         e vendeu a US$ 25.000 com dólar a R$ 6,00? O custo foi R$ 100.000 e a venda R$ 150.000 — o
         ganho de R$ 50.000 inclui a valorização do dólar, e ela é tributável. A fonte oficial para o
@@ -1188,6 +1243,20 @@ const CoinGecko = {
       `rng_${moeda}_${id}_${de}_${ate}`));
   },
 
+  /**
+   * Cotação de um ativo numa data específica.
+   * A CoinGecko usa dd-mm-aaaa aqui, diferente do resto da API.
+   */
+  async cotacaoNaData(id, moeda, dataISO){
+    const [a, m, d] = dataISO.split('-');
+    const r = await this._pedir(
+      `/coins/${id}/history?date=${d}-${m}-${a}&localization=false`,
+      `hist_${id}_${dataISO}`);
+    const v = r?.market_data?.current_price?.[moeda];
+    if (v == null) throw new Error(`Sem cotação de ${id} em ${d}/${m}/${a}.`);
+    return v;
+  },
+
   /** Busca de ativos pelo nome ou símbolo. */
   async procurar(termo){
     const r = await this._pedir(
@@ -1208,15 +1277,59 @@ const CoinGecko = {
 /** Trocar de fonte de dados é trocar esta linha. */
 let precos = CoinGecko;
 
+/**
+ * Câmbio oficial — PTAX do Banco Central, que é a referência aceita pelo
+ * fisco brasileiro. A API é pública e não exige chave.
+ *
+ * Cuidado com dois detalhes: a data vai no formato norte-americano
+ * MM-DD-AAAA, e não existe boletim em fim de semana ou feriado. Por isso
+ * consultamos um período de dez dias e pegamos o último boletim publicado
+ * até a data pedida — que é exatamente o critério do fisco.
+ */
+const BancoCentral = {
+  nome: 'PTAX / Banco Central',
+  base: 'https://olinda.bcb.gov.br/olinda/servico/PTAX/versao/v1/odata',
+
+  _americana(d){
+    const [a, m, dia] = d.split('-');
+    return `${m}-${dia}-${a}`;
+  },
+
+  async ptax(dataISO){
+    const guardado = store.ler('ptax:' + dataISO, null);
+    if (guardado) return guardado;
+
+    const fim = new Date(dataISO + 'T12:00:00Z');
+    const inicio = new Date(fim.getTime() - 10 * 864e5);
+    const url = `${this.base}/CotacaoDolarPeriodo(dataInicial=@i,dataFinalCotacao=@f)` +
+      `?@i='${this._americana(inicio.toISOString().slice(0,10))}'` +
+      `&@f='${this._americana(dataISO)}'` +
+      `&$orderby=dataHoraCotacao%20desc&$top=1&$format=json`;
+
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error(`Banco Central respondeu ${resp.status}.`);
+    const dados = await resp.json();
+    const linha = dados?.value?.[0];
+    if (!linha) throw new Error('Sem boletim de câmbio para essa data.');
+
+    const r = {
+      compra: linha.cotacaoCompra,
+      venda: linha.cotacaoVenda,
+      boletim: linha.dataHoraCotacao?.slice(0, 10) || dataISO
+    };
+    store.gravar('ptax:' + dataISO, r);
+    return r;
+  }
+};
+
 /* ══════════════════════════════════════════════════════════
    3. ESTADO
    Os lançamentos são o fato. Saldo, custo médio e resultado são derivados
    pelo motor (motor.js), que trabalha sempre em reais e usa o câmbio
    gravado em cada lançamento — nunca o câmbio de hoje.
    ══════════════════════════════════════════════════════════ */
-const PADRAO = ['bitcoin','ethereum','solana','chainlink','render-token','injective-protocol',
-  'celestia','immutable-x','pendle','thorchain','uniswap','maker','ondo-finance',
-  'akash-network','the-open-network','ronin','axie-infinity','usd-coin'];
+const PADRAO = ['aerodrome-finance','bitcoin','derive','ethereum','meta-2-2','morpho',
+  'numeraire','solana','syrup','tether','virtual-protocol','zama','zcash'];
 
 const estado = {
   moeda:     store.ler('cfg:moeda', 'usd'),
@@ -1228,6 +1341,8 @@ const estado = {
   foco:      store.ler('cfg:foco', 'bitcoin'),
   mercado: [], ano: [], periodo: [], comparar: [],
   fx: 1,
+  compensarPerdas: store.ler('cfg:compensarPerdas', false),
+  ultimoBackup: store.ler('cfg:ultimoBackup', null),
   ordemRazao: { col:'mc', desc:true },
   ordemPosicoes: { col:'valor', desc:true },
   ordemSerie: { col:'d', desc:true },
@@ -1754,7 +1869,9 @@ function renderFiscal(){
   if (estado.erroMotor) lista.unshift(estado.erroMotor);
   avisos.innerHTML = [...new Set(lista)].map(a => `<li>${a}</li>`).join('');
 
-  const nac = Motor.simularMensalNacional(estado.apuracao.alienacoes);
+  const params = { ...Motor.PARAMETROS_BR_2026,
+    compensarPerdasNoMesNacional: estado.compensarPerdas };
+  const nac = Motor.simularMensalNacional(estado.apuracao.alienacoes, params);
   document.getElementById('fiscal-nacional').innerHTML = nac.length
     ? nac.map(m => `<tr>
         <td class="lead">${m.competencia}</td>
@@ -1766,7 +1883,7 @@ function renderFiscal(){
       </tr>`).join('')
     : '<tr><td colspan="6" class="empty">Nenhuma alienação no regime nacional.</td></tr>';
 
-  const ext = Motor.simularAnualExterior(estado.apuracao.alienacoes);
+  const ext = Motor.simularAnualExterior(estado.apuracao.alienacoes, params);
   document.getElementById('fiscal-exterior').innerHTML = ext.length
     ? ext.map(a => `<tr>
         <td class="lead">${a.ano}</td>
@@ -1782,7 +1899,7 @@ function renderTudo(){
   rodarMotor();
   renderTopo();
   renderPatrimonio(); renderPosicoes(); renderMercado(); renderCotacao();
-  renderTrilho(); renderLivro(); renderFiscal(); popularSelects();
+  renderTrilho(); renderLivro(); renderFiscal(); renderBackup(); popularSelects();
 }
 
 /* ═══ NAVEGAÇÃO POR ABAS ═══ */
@@ -2177,6 +2294,71 @@ function previewLancamento(){
   document.getElementById(id).addEventListener('input', previewLancamento));
 document.getElementById('f-ativo').addEventListener('change', previewLancamento);
 
+/**
+ * Formata o campo ao sair dele, nunca enquanto se digita —
+ * mascarar durante a digitação briga com o cursor e com teclado numérico.
+ */
+function formatarCampo(el, casas){
+  const n = numero(el.value);
+  el.value = n ? n.toLocaleString('pt-BR', { maximumFractionDigits: casas }) : '';
+  previewLancamento();
+}
+[['f-qtd', 8], ['f-qtd2', 8], ['f-preco', 8], ['f-taxa', 2], ['f-cambio', 4]].forEach(([id, casas]) =>
+  document.getElementById(id).addEventListener('blur', ev => formatarCampo(ev.target, casas)));
+
+/** Preenche o preço com a cotação da data informada. */
+async function buscarCotacao(){
+  const btn = document.getElementById('buscar-preco');
+  const data = document.getElementById('f-data').value;
+  const ativo = document.getElementById('f-ativo').value;
+  const moeda = document.getElementById('f-moeda').value.toLowerCase();
+  if (!data || !ativo) return erro('Escolha o ativo e a data antes de buscar a cotação.');
+
+  const rotulo = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Buscando…';
+  try {
+    const hoje = new Date().toISOString().slice(0, 10);
+    let valor;
+    if (data === hoje){
+      const m = estado.mercado.find(x => x.id === ativo);
+      valor = (m && moeda === estado.moeda) ? m.price
+        : (await precos.cotacoes([ativo], moeda))[0]?.price;
+    } else {
+      valor = await precos.cotacaoNaData(ativo, moeda, data);
+    }
+    if (valor == null) throw new Error('Cotação não encontrada.');
+    document.getElementById('f-preco').value =
+      valor.toLocaleString('pt-BR', { maximumFractionDigits: 8 });
+    previewLancamento();
+    toast('Cotação preenchida. Confira antes de lançar.');
+  } catch (e){ erro(e.message); }
+  finally { btn.disabled = false; btn.textContent = rotulo; }
+}
+
+/** Preenche o câmbio com a PTAX do Banco Central. */
+async function buscarPtax(){
+  const btn = document.getElementById('buscar-cambio');
+  const data = document.getElementById('f-data').value;
+  if (!data) return erro('Informe a data antes de buscar o câmbio.');
+
+  const rotulo = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Buscando…';
+  try {
+    const r = await BancoCentral.ptax(data);
+    document.getElementById('f-cambio').value =
+      r.venda.toLocaleString('pt-BR', { maximumFractionDigits: 4 });
+    previewLancamento();
+    const [a, m, d] = r.boletim.split('-');
+    toast(r.boletim === data
+      ? `PTAX de venda de ${d}/${m}/${a}.`
+      : `Sem boletim em ${data.split('-').reverse().join('/')} — usada a PTAX de ${d}/${m}/${a}.`);
+  } catch (e){ erro(e.message); }
+  finally { btn.disabled = false; btn.textContent = rotulo; }
+}
+
+document.getElementById('buscar-preco').addEventListener('click', buscarCotacao);
+document.getElementById('buscar-cambio').addEventListener('click', buscarPtax);
+
 document.getElementById('f-gravar').addEventListener('click', () => {
   const v = id => document.getElementById(id).value.trim();
   const tipo = v('f-tipo');
@@ -2286,6 +2468,53 @@ document.getElementById('restaurar').addEventListener('click', async () => {
   catch (e){ erro(e.message); }
 });
 
+// ═══ ajustes ═══
+document.getElementById('op-compensar').addEventListener('change', function(){
+  estado.compensarPerdas = this.checked;
+  store.gravar('cfg:compensarPerdas', this.checked);
+  renderFiscal();
+  toast(this.checked
+    ? 'Prejuízos passam a abater lucros no mês. Confirme com seu contador.'
+    : 'Voltou à leitura conservadora, operação a operação.');
+});
+
+/**
+ * Sem banco de dados, a exportação é a única rede de segurança.
+ * O aviso aparece quando há lançamentos e a última cópia está velha —
+ * e some assim que o usuário exporta.
+ */
+const DIAS_BACKUP = 7;
+
+function renderBackup(){
+  const alerta = document.getElementById('alerta-backup');
+  const status = document.getElementById('status-backup');
+  const painel = document.getElementById('painel-backup');
+
+  if (!estado.lancamentos.length){
+    alerta.classList.remove('on');
+    status.textContent = '';
+    return;
+  }
+
+  const ultimo = estado.ultimoBackup ? new Date(estado.ultimoBackup) : null;
+  const dias = ultimo ? Math.floor((Date.now() - ultimo) / 864e5) : null;
+
+  status.textContent = ultimo
+    ? `Última cópia: ${fmtDia.format(ultimo)} (${dias === 0 ? 'hoje' : dias + ' dia' + (dias > 1 ? 's' : '') + ' atrás'}).`
+    : 'Você ainda não exportou nenhuma cópia.';
+
+  const vencido = !ultimo || dias >= DIAS_BACKUP;
+  alerta.classList.toggle('on', vencido);
+  if (vencido){
+    const n = estado.lancamentos.length;
+    const quantos = n === 1 ? 'Seu único lançamento existe' : `Seus ${n} lançamentos existem`;
+    alerta.textContent = ultimo
+      ? `Faz ${dias} dias desde a última cópia de segurança. ${quantos} só neste navegador — limpar os dados do site apaga tudo.`
+      : `${quantos} só neste navegador e ainda não foram copiados. Limpar os dados do site apaga tudo.`;
+    painel.open = true;
+  }
+}
+
 // exportar / importar
 document.getElementById('exportar').addEventListener('click', () => {
   const pacote = { versao:1, exportadoEm:new Date().toISOString(),
@@ -2294,7 +2523,10 @@ document.getElementById('exportar').addEventListener('click', () => {
   const a = document.createElement('a');
   a.href = url; a.download = `carteira-${new Date().toISOString().slice(0,10)}.json`; a.click();
   URL.revokeObjectURL(url);
-  toast('Carteira exportada.');
+  estado.ultimoBackup = new Date().toISOString();
+  store.gravar('cfg:ultimoBackup', estado.ultimoBackup);
+  renderBackup();
+  toast('Carteira exportada. Guarde o arquivo em lugar seguro.');
 });
 
 document.getElementById('importar').addEventListener('click', () => document.getElementById('arquivo').click());
@@ -2404,6 +2636,7 @@ function migrarPosicoesAntigas(){
   document.querySelectorAll('[data-moeda]').forEach(c =>
     c.dataset.moeda === estado.moeda ? c.setAttribute('aria-pressed','true') : c.removeAttribute('aria-pressed'));
   sincronizarTextarea();
+  document.getElementById('op-compensar').checked = estado.compensarPerdas;
 
   document.getElementById('f-data').value = hoje.toISOString().slice(0,10);
   ajustarFormulario();
