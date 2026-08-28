@@ -316,6 +316,36 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
 }
 .fechar:hover{color:var(--ink)}
 
+/* ═══ trilho de troca de ativo ═══ */
+.trilho{
+  display:flex;gap:0;overflow-x:auto;border-bottom:1px solid var(--rule);
+  margin:0 0 4px;scrollbar-width:thin;
+}
+.trilho::-webkit-scrollbar{height:5px}
+.trilho::-webkit-scrollbar-thumb{background:var(--rule)}
+.trilho-item{
+  flex:0 0 auto;min-width:96px;text-align:left;cursor:pointer;
+  background:transparent;border:0;border-right:1px solid var(--rule);
+  padding:9px 14px 8px;font-family:'IBM Plex Mono',monospace;
+  border-bottom:3px solid transparent;margin-bottom:-1px;
+}
+.trilho-item:hover{background:var(--bar)}
+.trilho-item[aria-current="true"]{border-bottom-color:var(--stamp);background:var(--bar)}
+.trilho-item .t-sym{display:block;font-size:13px;font-weight:600;text-transform:uppercase}
+.trilho-item .t-var{display:block;font-size:11px;font-variant-numeric:tabular-nums;margin-top:1px}
+.trilho-item .t-pos{
+  display:block;font-family:'IBM Plex Sans Condensed',sans-serif;font-size:10px;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-top:2px;
+}
+.dica-teclado{
+  font-family:'IBM Plex Sans Condensed',sans-serif;font-size:11px;color:var(--muted);
+  margin:6px 0 0;
+}
+.dica-teclado kbd{
+  font-family:'IBM Plex Mono',monospace;border:1px solid var(--rule);
+  padding:0 4px;font-size:10px;
+}
+
 /* ═══ ajustes de tabela ═══ */
 .tabela-vazia{font-family:'IBM Plex Sans Condensed',sans-serif;color:var(--muted);padding:26px 0;text-align:center}
 .atalho{
@@ -512,7 +542,10 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
 
   <!-- ══════════════ ATIVO ══════════════ -->
   <div class="vista" id="v-ativo" role="tabpanel">
-    <div class="destaque" style="padding:26px 0 20px">
+    <div class="trilho" id="trilho" role="tablist" aria-label="Trocar de ativo"></div>
+    <p class="dica-teclado">Use <kbd>←</kbd> <kbd>→</kbd> para percorrer os ativos.</p>
+
+    <div class="destaque" style="padding:22px 0 20px">
       <div>
         <p class="eyebrow" id="foco-nome">—</p>
         <p class="total num" id="preco">—</p>
@@ -552,7 +585,7 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
           <button class="chip" data-dias="7">7 dias</button>
           <button class="chip" data-dias="30">30 dias</button>
           <button class="chip" data-dias="90">90 dias</button>
-          <button class="chip" data-dias="365" aria-pressed="true">1 ano</button>
+          <button class="chip" data-dias="365" aria-pressed="true" id="chip-max">1 ano</button>
         </span>
         <div class="field"><label for="de">De</label><input type="date" id="de"></div>
         <div class="field"><label for="ate">Até</label><input type="date" id="ate"></div>
@@ -664,7 +697,7 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
   </div>
 
   <footer>
-    <span>CoinGecko API pública · dados guardados neste navegador</span>
+    <span id="atribuicao">—</span>
     <span>Apurado em <b id="apurado">—</b> · folha <b id="folio">—</b></span>
   </footer>
 </main>
@@ -792,21 +825,101 @@ const cache = {
 };
 
 /* ══════════════════════════════════════════════════════════
-   2. API
+   2. PROVEDOR DE PREÇOS
+   Toda conversa com o mundo externo passa por aqui. O resto do
+   código não sabe qual serviço está do outro lado — pede cotação,
+   série e busca, e recebe sempre o mesmo formato.
+
+   Para trocar de fonte, ou para apontar para um proxy próprio,
+   basta escrever outro objeto com os mesmos seis métodos e
+   atribuí-lo a `precos`. Nada além desta seção muda.
    ══════════════════════════════════════════════════════════ */
-const API = 'https://api.coingecko.com/api/v3';
 const espera = ms => new Promise(r => setTimeout(r, ms));
 
-async function buscar(caminho, chave, { semCache = false } = {}){
-  if (!semCache){ const g = cache.ler(chave); if (g) return g; }
-  for (let i = 0; i < 3; i++){
-    const resp = await fetch(API + caminho);
-    if (resp.ok){ const d = await resp.json(); cache.gravar(chave, d); return d; }
-    if (resp.status === 429){ await espera(1500 * (i + 1)); continue; }
-    throw new Error('A CoinGecko respondeu ' + resp.status + '.');
+const CoinGecko = {
+  nome: 'CoinGecko',
+  atribuicao: 'Dados fornecidos por CoinGecko',
+  site: 'https://www.coingecko.com',
+  /** Teto de histórico do plano em uso. A interface avisa quando esbarra nele. */
+  limiteHistoricoDias: 365,
+
+  base: 'https://api.coingecko.com/api/v3',
+
+  /** Camada de transporte: cache com validade, recuo progressivo em 429. */
+  async _pedir(caminho, chave, { semCache = false } = {}){
+    if (!semCache){ const g = cache.ler(chave); if (g) return g; }
+    for (let i = 0; i < 3; i++){
+      const resp = await fetch(this.base + caminho);
+      if (resp.ok){ const d = await resp.json(); cache.gravar(chave, d); return d; }
+      if (resp.status === 429){ await espera(1500 * (i + 1)); continue; }
+      throw new Error(`${this.nome} respondeu ${resp.status}.`);
+    }
+    throw new Error('Limite de requisições atingido. Aguarde cerca de um minuto.');
+  },
+
+  /** Séries vêm como [[ms, valor], …] em três listas paralelas. */
+  _serie(bruto){
+    return bruto.prices.map((p, i) => ({
+      t: p[0], preco: p[1],
+      vol: bruto.total_volumes?.[i]?.[1] ?? null,
+      mc:  bruto.market_caps?.[i]?.[1]  ?? null
+    }));
+  },
+
+  /** Cotação e variações de vários ativos numa chamada só. */
+  async cotacoes(ids, moeda, { fresco = false } = {}){
+    if (!ids.length) return [];
+    const lista = ids.join(',');
+    const bruto = await this._pedir(
+      `/coins/markets?vs_currency=${moeda}&ids=${lista}&sparkline=true` +
+      `&price_change_percentage=24h,7d,30d,1y&per_page=250`,
+      `mkt_${moeda}_${lista}`, { semCache: fresco });
+
+    return bruto.map(c => ({
+      id: c.id, symbol: c.symbol, name: c.name, price: c.current_price,
+      c24: c.price_change_percentage_24h_in_currency,
+      c7:  c.price_change_percentage_7d_in_currency,
+      c30: c.price_change_percentage_30d_in_currency,
+      c1y: c.price_change_percentage_1y_in_currency,
+      mc:  c.market_cap, spark: c.sparkline_in_7d?.price
+    }));
+  },
+
+  /** Série histórica de um ativo pelos últimos N dias. */
+  async serie(id, moeda, dias, { diaria = false } = {}){
+    const sufixo = diaria ? '&interval=daily' : '';
+    return this._serie(await this._pedir(
+      `/coins/${id}/market_chart?vs_currency=${moeda}&days=${dias}${sufixo}`,
+      `serie_${moeda}_${id}_${dias}${diaria ? 'd' : ''}`));
+  },
+
+  /** Série histórica entre duas datas. */
+  async intervalo(id, moeda, inicio, fim){
+    const de = Math.floor(inicio / 1000), ate = Math.floor(fim / 1000);
+    return this._serie(await this._pedir(
+      `/coins/${id}/market_chart/range?vs_currency=${moeda}&from=${de}&to=${ate}`,
+      `rng_${moeda}_${id}_${de}_${ate}`));
+  },
+
+  /** Busca de ativos pelo nome ou símbolo. */
+  async procurar(termo){
+    const r = await this._pedir(
+      `/search?query=${encodeURIComponent(termo)}`, `busca_${termo.toLowerCase()}`);
+    return (r.coins || []).slice(0, 20).map(c => ({
+      id: c.id, symbol: c.symbol, name: c.name, rank: c.market_cap_rank
+    }));
+  },
+
+  /** Câmbio implícito, usado só para exibir custo em outra moeda. */
+  async cambioUsdBrl(){
+    const r = await this._pedir('/simple/price?ids=bitcoin&vs_currencies=usd,brl', 'fx');
+    if (!(r?.bitcoin?.usd && r?.bitcoin?.brl)) throw new Error('Câmbio indisponível.');
+    return r.bitcoin.brl / r.bitcoin.usd;
   }
-  throw new Error('Limite de requisições atingido. Aguarde cerca de um minuto.');
-}
+};
+
+/** Trocar de fonte de dados é trocar esta linha. */
+let precos = CoinGecko;
 
 /* ══════════════════════════════════════════════════════════
    3. ESTADO
@@ -1151,6 +1264,25 @@ function renderPosicoes(){
   } else av.hidden = true;
 }
 
+/** Trilho de ativos: trocar de moeda sem sair da tela de detalhe. */
+function renderTrilho(){
+  const trilho = document.getElementById('trilho');
+  const posicoes = new Map(apurar().linhas.map(l => [l.id, l]));
+
+  trilho.innerHTML = estado.mercado.map(m => {
+    const p = posicoes.get(m.id);
+    return `<button class="trilho-item" data-ativo="${m.id}" role="tab"
+      ${m.id === estado.foco ? 'aria-current="true"' : ''}>
+      <span class="t-sym">${m.symbol}</span>
+      <span class="t-var ${cls(m.c24)}">${pct(m.c24)}</span>
+      <span class="t-pos">${p && p.qtd > 0 ? 'em carteira' : '&nbsp;'}</span>
+    </button>`;
+  }).join('');
+
+  const atual = trilho.querySelector('[aria-current="true"]');
+  if (atual) atual.scrollIntoView({ block:'nearest', inline:'center' });
+}
+
 /** Resumo permanente na barra de comando. */
 function renderTopo(){
   const a = apurar();
@@ -1363,7 +1495,7 @@ function renderTudo(){
   rodarMotor();
   renderTopo();
   renderPatrimonio(); renderPosicoes(); renderMercado(); renderCotacao();
-  renderLivro(); renderFiscal(); popularSelects();
+  renderTrilho(); renderLivro(); renderFiscal(); popularSelects();
 }
 
 /* ═══ NAVEGAÇÃO POR ABAS ═══ */
@@ -1390,7 +1522,8 @@ async function abrirAtivo(id){
     estado.foco = id;
     estado.comparar = [];
     store.gravar('cfg:foco', id);
-    renderTopo(); renderPosicoes(); renderMercado(); renderCotacao(); renderComparar();
+    renderTopo(); renderPosicoes(); renderMercado(); renderCotacao();
+    renderTrilho(); renderComparar();
   }
   mostrarVista('ativo');
   if (trocou){
@@ -1427,35 +1560,14 @@ document.addEventListener('keydown', ev => {
 /* ══════════════════════════════════════════════════════════
    8. CARGA DE DADOS
    ══════════════════════════════════════════════════════════ */
-const normalizar = b => b.prices.map((p, i) => ({
-  t:p[0], preco:p[1],
-  vol: b.total_volumes?.[i]?.[1] ?? null,
-  mc:  b.market_caps?.[i]?.[1] ?? null
-}));
-
 async function carregarCambio(){
-  try {
-    const r = await buscar('/simple/price?ids=bitcoin&vs_currencies=usd,brl', 'fx');
-    if (r?.bitcoin?.usd && r?.bitcoin?.brl) estado.fx = r.bitcoin.brl / r.bitcoin.usd;
-  } catch { /* mantém 1; afeta só a conversão de custo em real */ }
+  try { estado.fx = await precos.cambioUsdBrl(); }
+  catch { /* mantém 1; afeta só a conversão de custo para outra moeda */ }
 }
 
 async function carregarRazao({ fresco = false } = {}){
   if (!estado.lista.length){ estado.mercado = []; renderTudo(); return; }
-  const ids = estado.lista.join(',');
-  const bruto = await buscar(
-    `/coins/markets?vs_currency=${estado.moeda}&ids=${ids}&sparkline=true` +
-    `&price_change_percentage=24h,7d,30d,1y&per_page=250`,
-    `mkt_${estado.moeda}_${ids}`, { semCache:fresco });
-
-  estado.mercado = bruto.map(c => ({
-    id:c.id, symbol:c.symbol, name:c.name, price:c.current_price,
-    c24:c.price_change_percentage_24h_in_currency,
-    c7: c.price_change_percentage_7d_in_currency,
-    c30:c.price_change_percentage_30d_in_currency,
-    c1y:c.price_change_percentage_1y_in_currency,
-    mc:c.market_cap, spark:c.sparkline_in_7d?.price
-  }));
+  estado.mercado = await precos.cotacoes(estado.lista, estado.moeda, { fresco });
 
   const perdidos = estado.lista.filter(id => !estado.mercado.some(m => m.id === id));
   if (perdidos.length) erro('IDs não reconhecidos pela CoinGecko: ' + perdidos.join(', '));
@@ -1470,12 +1582,11 @@ async function carregarRazao({ fresco = false } = {}){
 
 async function carregarFoco(){
   const id = estado.foco, v = estado.moeda;
-  const semana = normalizar(await buscar(`/coins/${id}/market_chart?vs_currency=${v}&days=7`, `sem_${v}_${id}`));
+  const semana = await precos.serie(id, v, 7);
   desenhar('c-semana', semana.map(p => fmtHora.format(new Date(p.t))),
     [{ nome:'Fechamento', valores: semana.map(p => p.preco) }]);
 
-  estado.ano = normalizar(await buscar(
-    `/coins/${id}/market_chart?vs_currency=${v}&days=365&interval=daily`, `ano_${v}_${id}`));
+  estado.ano = await precos.serie(id, v, precos.limiteHistoricoDias, { diaria:true });
 
   await desenharAno();
   renderPeriodo(estado.ano, 'Últimos 365 dias · recorte da série anual já carregada');
@@ -1493,9 +1604,7 @@ async function desenharAno(){
   }];
   for (const id of estado.comparar){
     try {
-      const s = normalizar(await buscar(
-        `/coins/${id}/market_chart?vs_currency=${estado.moeda}&days=365&interval=daily`,
-        `ano_${estado.moeda}_${id}`));
+      const s = await precos.serie(id, estado.moeda, precos.limiteHistoricoDias, { diaria:true });
       const m = estado.mercado.find(x => x.id === id);
       series.push({ nome:(m?.symbol || id).toUpperCase(),
         valores: norm(estado.ano.map((_, i) => s[i]?.preco ?? null)) });
@@ -1536,6 +1645,29 @@ document.getElementById('razao-corpo').addEventListener('click', async ev => {
 document.getElementById('posicoes-corpo').addEventListener('click', ev => {
   const linha = ev.target.closest('tr[data-id]');
   if (linha) abrirAtivo(linha.dataset.id);
+});
+
+// trilho de ativos dentro da própria aba de detalhe
+document.getElementById('trilho').addEventListener('click', ev => {
+  const item = ev.target.closest('[data-ativo]');
+  if (item) abrirAtivo(item.dataset.ativo);
+});
+
+// setas percorrem os ativos, exceto enquanto se digita num campo
+document.addEventListener('keydown', ev => {
+  if (estado.vista !== 'ativo') return;
+  if (ev.key !== 'ArrowLeft' && ev.key !== 'ArrowRight') return;
+  if (modal.classList.contains('aberto')) return;
+  const campo = ev.target.tagName;
+  if (campo === 'INPUT' || campo === 'SELECT' || campo === 'TEXTAREA') return;
+
+  const ids = estado.mercado.map(m => m.id);
+  if (ids.length < 2) return;
+  const atual = ids.indexOf(estado.foco);
+  const passo = ev.key === 'ArrowRight' ? 1 : -1;
+  const proximo = ids[(atual + passo + ids.length) % ids.length];
+  ev.preventDefault();
+  abrirAtivo(proximo);
 });
 
 // ordenação das três tabelas
@@ -1599,15 +1731,13 @@ document.getElementById('aplicar-datas').addEventListener('click', async () => {
   const inicio = new Date(de + 'T00:00:00'), fim = new Date(ate + 'T23:59:59');
   if (inicio >= fim) return erro('A data inicial precisa ser anterior à data final.');
   if (fim > new Date()) return erro('A data final não pode estar no futuro.');
-  if (inicio < new Date(Date.now() - 365 * 864e5))
-    return erro('O plano gratuito da CoinGecko cobre apenas os últimos 365 dias.');
+  const teto = precos.limiteHistoricoDias;
+  if (inicio < new Date(Date.now() - teto * 864e5))
+    return erro(`A fonte de dados em uso cobre apenas os últimos ${teto} dias.`);
   document.querySelectorAll('[data-dias]').forEach(c => c.removeAttribute('aria-pressed'));
-  const from = Math.floor(inicio / 1000), to = Math.floor(fim / 1000);
   try {
-    const b = await buscar(
-      `/coins/${estado.foco}/market_chart/range?vs_currency=${estado.moeda}&from=${from}&to=${to}`,
-      `rng_${estado.moeda}_${estado.foco}_${from}_${to}`);
-    renderPeriodo(normalizar(b), `${fmtDia.format(inicio)} a ${fmtDia.format(fim)} · consultado na CoinGecko`);
+    const serie = await precos.intervalo(estado.foco, estado.moeda, inicio, fim);
+    renderPeriodo(serie, `${fmtDia.format(inicio)} a ${fmtDia.format(fim)} · consultado em ${precos.nome}`);
   } catch (e){ erro(e.message); }
 });
 
@@ -1619,12 +1749,11 @@ document.getElementById('busca').addEventListener('input', function(){
   if (termo.length < 2){ ul.hidden = true; return; }
   debounce = setTimeout(async () => {
     try {
-      const r = await buscar(`/search?query=${encodeURIComponent(termo)}`, `busca_${termo.toLowerCase()}`);
-      const achados = (r.coins || []).slice(0, 20);
+      const achados = await precos.procurar(termo);
       ul.hidden = false;
       ul.innerHTML = achados.length ? achados.map(c => `
         <li><span><span class="sym">${c.symbol}</span><span class="name">${c.name}</span>
-          ${c.market_cap_rank ? `<span class="rank">nº ${c.market_cap_rank}</span>` : ''}</span>
+          ${c.rank ? `<span class="rank">nº ${c.rank}</span>` : ''}</span>
           <button class="ghost" data-add="${c.id}" ${estado.lista.includes(c.id) ? 'disabled' : ''}>
             ${estado.lista.includes(c.id) ? 'Na carteira' : 'Adicionar'}</button></li>`).join('')
         : '<li class="empty">Nenhum ativo encontrado.</li>';
@@ -1964,6 +2093,13 @@ function migrarPosicoesAntigas(){
 
   document.getElementById('f-data').value = hoje.toISOString().slice(0,10);
   ajustarFormulario();
+  document.getElementById('atribuicao').innerHTML =
+    `<a href="${precos.site}" target="_blank" rel="noopener">${precos.atribuicao}</a> · ` +
+    `dados guardados neste navegador`;
+  const chipMax = document.getElementById('chip-max');
+  chipMax.textContent = precos.limiteHistoricoDias >= 365
+    ? '1 ano' : precos.limiteHistoricoDias + ' dias';
+  chipMax.dataset.dias = String(precos.limiteHistoricoDias);
 
   try {
     await carregarCambio();
