@@ -10,194 +10,237 @@
 
 ## O problema que ele resolve
 
-Imagine que você comprou Bitcoin três vezes ao longo do ano:
+Imagine que você comprou Bitcoin duas vezes e depois trocou parte por Solana:
 
-| Quando | Quanto | Preço | Total pago |
-|---|---|---|---|
-| Janeiro | 0,5 BTC | R$ 180.000 | R$ 90.000 |
-| Fevereiro | 0,7 BTC | R$ 210.000 | R$ 147.000 |
-| Junho | trocou 0,3 BTC por 100 SOL | — | — |
+| Quando | O que aconteceu |
+|---|---|
+| Janeiro | Comprou 0,5 BTC a R$ 180.000 |
+| Fevereiro | Comprou 0,7 BTC a R$ 210.000 |
+| Junho | Trocou 0,3 BTC por 100 SOL |
 
 Agora responda, de cabeça:
 
 - Quanto você pagou, em média, por cada Bitcoin que ainda tem?
-- Aquela troca de junho gerou lucro? Quanto?
+- A troca de junho gerou lucro? Quanto?
 - Você precisa pagar imposto por causa dela?
 - Quanto vale sua carteira hoje?
 
-São quatro contas diferentes, todas dependentes umas das outras, e todas fáceis de errar. A troca de junho é a mais traiçoeira: muita gente acha que trocar cripto por cripto não gera imposto, mas gera — no Brasil isso é permuta, e permuta realiza lucro.
+São quatro contas diferentes, dependentes umas das outras, e todas fáceis de errar. A troca de junho é a mais traiçoeira: muita gente acha que trocar cripto por cripto não gera imposto. Gera — no Brasil isso é permuta, e permuta realiza lucro.
 
-Este sistema faz essas quatro contas para você, a partir de uma coisa só: o registro do que aconteceu.
+O sistema faz essas quatro contas a partir de uma coisa só: o registro do que aconteceu.
 
 ---
 
 ## A ideia central
 
-Existe um princípio de contabilidade por trás de tudo aqui, e entender ele faz o resto ficar óbvio:
-
 > **Você registra fatos. O sistema calcula consequências.**
 
-Você **não** digita "tenho 0,9 BTC com preço médio de R$ 197.500". Você digita as compras e as vendas que aconteceram, e o saldo e o preço médio aparecem sozinhos.
+Você **não** digita "tenho 0,9 BTC com preço médio de R$ 197.500". Você digita as compras e a troca, e o saldo e o preço médio aparecem sozinhos.
 
-Isso parece mais trabalhoso, mas é o contrário:
+Parece mais trabalhoso, mas é o contrário:
 
-- Você nunca precisa refazer conta quando compra de novo
+- Você nunca refaz conta quando compra de novo
 - O preço médio nunca fica errado por erro de digitação
-- O sistema sabe *quando* cada coisa aconteceu, então consegue apurar imposto por mês e por ano
-- Você tem um histórico auditável, que é justamente o que a Receita pode pedir
+- O sistema sabe *quando* cada coisa aconteceu, então apura imposto por mês e por ano
+- Você fica com um histórico auditável, que é o que a Receita pode pedir
 
-O nome "livro-razão" vem daí. É o livro contábil onde se registram os lançamentos de uma conta.
-
----
-
-## As cinco telas
-
-O painel é uma página só, dividida em cinco blocos, de cima para baixo.
-
-### 1. Patrimônio
-
-O resumo geral da sua carteira.
-
-- **Valor de mercado** — quanto tudo que você tem vale agora
-- **Custo de aquisição** — quanto você pagou por tudo isso
-- **Resultado em aberto** — a diferença entre os dois. É o lucro que existe no papel mas ainda não foi realizado, porque você não vendeu
-- **Variação 24 h** — quanto a carteira subiu ou caiu em dinheiro desde ontem
-- **Composição** — a barra listrada mostra o peso de cada ativo na carteira
-- **Evolução do patrimônio** — grava um ponto por dia de uso. A linha cheia é o valor de mercado, a tracejada é o custo. A distância entre elas é o seu resultado ao longo do tempo
-
-Se você ainda não lançou nada, esta tela aparece vazia com um convite. É normal.
-
-### 2. Razão geral
-
-A lista dos ativos que você acompanha. Tem dois modos, escolhidos pelos botões no topo:
-
-**Cotações** — o mercado. Preço, variação em 24 h, 7 e 30 dias, minigráfico da semana e capitalização. Serve para acompanhar, mesmo ativos que você não possui.
-
-**Posições** — a sua carteira. Quantidade, preço médio, valor, custo, resultado, comprovação e participação. Todos esses números são calculados a partir do livro — não dá para editá-los aqui, e isso é proposital.
-
-A coluna **Comprovação** merece atenção: ela mostra quanto do custo daquele ativo tem extrato ou nota por trás. Se aparecer 38%, significa que 62% do custo é estimativa. Nenhum outro sistema te conta isso.
-
-Clicar numa linha abre a análise detalhada daquele ativo mais abaixo. O × remove o ativo da lista de acompanhamento.
-
-### 3. Livro de lançamentos
-
-O coração do sistema. Aqui você registra o que aconteceu.
-
-Clique em **Novo lançamento**, escolha a operação, preencha e clique em Lançar. Os campos mudam conforme a operação escolhida — transferência não pergunta preço, permuta pergunta os dois ativos, operação em dólar pergunta o câmbio.
-
-Abaixo do formulário fica a lista de tudo que você já registrou, do mais recente para o mais antigo.
-
-### 4. Apuração fiscal
-
-A simulação de imposto, sempre em reais. Duas tabelas separadas, porque **existem dois regimes diferentes**:
-
-**Regime nacional** — operações feitas em corretora brasileira. Apuração mês a mês. Há uma faixa de isenção: se o total vendido no mês ficar abaixo do limite, não há imposto, mesmo com lucro. A tabela mostra "Isento" nesses meses.
-
-**Regime exterior** — corretora estrangeira ou DeFi. Apuração no ano inteiro, alíquota fixa, e aqui os prejuízos abatem os lucros dentro do mesmo ano.
-
-O aviso laranja no topo não é enfeite. Leia.
-
-### 5. Conta analítica
-
-A análise detalhada de um ativo por vez — aquele que você clicou na razão geral.
-
-- Cotação atual e variações
-- Sua posição naquele ativo, se houver
-- Gráfico da semana, hora a hora
-- Gráfico do ano, dia a dia, com opção de comparar até três ativos em índice base 100
-- Seletor de período com atalhos ou datas específicas
-- Série histórica em tabela, exportável em CSV
-
-O **índice base 100** é útil e pouco conhecido: ele coloca todos os ativos no mesmo ponto de partida, então você vê quem rendeu mais em porcentagem, independente do preço de cada um.
+O nome vem daí: livro-razão é o livro contábil onde se registram os lançamentos de uma conta.
 
 ---
 
-## Primeiros passos
+## As cinco abas
 
-**1. Monte sua lista de ativos.**
-Em "Gerenciar ativos e dados", use a busca para adicionar o que você tem ou quer acompanhar. Remova o que não interessa com o ×.
+No topo há uma barra fixa com o patrimônio, a variação de 24 h, o seletor de moeda e o botão **+ Lançar**. Abaixo dela, cinco abas.
 
-**2. Escolha a moeda.**
-USD ou BRL, no canto superior direito. Isso muda só a exibição — a apuração fiscal é sempre em reais.
+### Carteira — "onde estou"
 
-**3. Registre o que você já tem.**
-Se você já tinha cripto antes de usar isto, veja a seção "Não lembro o que paguei" mais abaixo. Se está começando agora, é só lançar cada compra conforme fizer.
+- **Valor de mercado** — quanto tudo vale agora
+- **Custo de aquisição** — quanto você pagou
+- **Resultado em aberto** — a diferença. É o lucro que existe no papel mas não foi realizado, porque você não vendeu
+- **Variação 24 h** — quanto subiu ou caiu em dinheiro desde ontem
+- **Composição** — a barra listrada mostra o peso de cada ativo
+- **Evolução do patrimônio** — um ponto por dia de uso. A linha cheia é o valor, a tracejada é o custo. A distância entre elas é seu resultado ao longo do tempo
+- **Posições** — a tabela detalhada por ativo
 
-**4. Lance uma compra de teste.**
-Novo lançamento → Compra → escolha o ativo, a data, quanto comprou e por quanto. Clique em Lançar. Veja o patrimônio aparecer.
+A coluna **Comprovação** mostra quanto do custo daquele ativo tem extrato ou nota por trás. Se aparecer 38%, significa que 62% do custo é estimativa.
 
-**5. Exporte a carteira.**
-Em "Gerenciar ativos e dados" → Exportar carteira. Guarde esse arquivo. Enquanto não existir sincronização em nuvem, ele é sua única cópia de segurança.
+No fim da aba fica **Cópia de segurança**, para exportar e importar seus dados.
+
+### Mercado — "o que está acontecendo"
+
+Cotações de tudo que você acompanha, mesmo o que não possui. Preço, variações de 24 h, 7 e 30 dias, minigráfico da semana e capitalização.
+
+Aqui também ficam a busca para adicionar ativos e a edição da lista por texto. O botão **Copiar para planilha** leva símbolos e preços em formato colável.
+
+### [Símbolo do ativo] — "como esse ativo se comporta"
+
+Essa aba muda de nome conforme o ativo aberto. Clique em qualquer linha nas abas Carteira ou Mercado para chegar nela.
+
+No topo há um trilho horizontal com todos os seus ativos — clique para trocar sem sair da tela, ou use as setas **←** e **→** do teclado.
+
+Dentro dela: cotação e variações, sua posição naquele ativo, gráfico da semana hora a hora, gráfico do ano dia a dia, seletor de período e a série histórica em tabela, exportável em CSV.
+
+O **índice base 100**, no gráfico anual, coloca até três ativos no mesmo ponto de partida — assim você vê quem rendeu mais em porcentagem, independente do preço de cada um.
+
+### Livro — "o que eu fiz"
+
+Todos os lançamentos, do mais recente para o mais antigo. É a fonte de tudo que aparece nas outras abas.
+
+### Imposto — "quanto eu devo"
+
+A simulação, sempre em reais, com os dois regimes separados. Detalhada mais abaixo.
 
 ---
 
-## As operações, uma a uma
+## Já tenho criptomoedas. Como começo?
 
-### Compra
-Você deu dinheiro e recebeu cripto. Aumenta a quantidade e o custo. A taxa da corretora entra no custo, porque faz parte do que você pagou pelo bem.
+Este é o caso mais comum, e o sistema foi desenhado para ele. Sim, você lança como **compra**, na **data real**. A pergunta é quanta informação você tem.
 
+### Caminho A — você tem o histórico
+
+Baixe o extrato da corretora — Binance, Mercado Bitcoin, Foxbit, NovaDAX e as demais exportam isso — e lance cada compra na data que aconteceu, marcando **Tenho extrato**.
+
+Dá trabalho uma vez e depois está certo para sempre: preço médio exato, apuração correta, comprovação em 100%.
+
+### Caminho B — não tem, ou não vale o esforço
+
+Um único lançamento por ativo, representando tudo que você tem hoje daquele ativo.
+
+| Campo | O que preencher |
+|---|---|
+| Quantidade | O saldo atual, não o que comprou lá atrás |
+| Preço unitário | O custo médio que você estima ter pagado |
+| Data | A data aproximada, ou qualquer data anterior à primeira venda que for registrar |
+| Comprovação | *Valor de memória* se lembra mais ou menos, *Não sei o custo* se não faz ideia |
+
+### O erro mais comum
+
+**Lançar a quantidade que tem com o preço de hoje.** Isso diz ao sistema que você pagou o preço atual, e o resultado fica zerado para sempre. Se você comprou BTC a R$ 90.000 e hoje vale R$ 600.000, esse lucro desaparece.
+
+Se realmente não faz ideia, marque **Não sei o custo** com preço zero. Fiscalmente é conservador: o ganho apurado fica máximo, então você pagaria mais imposto, nunca menos.
+
+### Por que a data importa
+
+Se você nunca vender, ela não muda nada. Mas se vender, muda tudo — o custo médio é calculado na ordem cronológica.
+
+E se você registrar uma venda de 2024 sem ter lançado a compra antes dela, o sistema recusa com "saldo insuficiente". Está correto: não dá para vender o que ainda não entrou no livro.
+
+**Regra prática:** o lançamento de abertura precisa ter data anterior a qualquer venda que você registrar.
+
+### A escada de reconstrução
+
+Se você quer o custo mais correto possível, tente nesta ordem:
+
+1. **Extrato da corretora.** Quase todo mundo pode recuperar e não sabe. Comece por aqui.
+2. **Sua declaração de IR do ano passado.** Se você declarou cripto em Bens e Direitos, aquele valor **é** seu custo de aquisição oficial. Já existe, é válido, é grátis.
+3. **Reconstrução pela data.** Lembra mais ou menos quando comprou? Procure a cotação daquele dia. Marque como *Reconstruído pela data*.
+4. **Valor de memória.** "Foi por volta de trinta mil."
+5. **Custo desconhecido.** Preço zero, marcado como *Não sei o custo*.
+
+Seja qual for o caminho, o sistema registra o nível de comprovação e mostra na tela. Uma carteira com 40% de comprovação continua funcionando — você só sabe o quanto pode confiar no resultado.
+
+---
+
+## Qual opção usar em cada situação
+
+A pergunta certa não é "o que essa opção faz", é "o que aconteceu comigo".
+
+| O que aconteceu | O que lançar |
+|---|---|
+| Paguei em real ou dólar e recebi cripto | **Compra** |
+| Vendi cripto e recebi dinheiro | **Venda** |
+| Troquei uma cripto por outra | **Permuta** |
+| Ganhei cripto de staking, juros ou cashback | **Rendimento** |
+| Recebi cripto de graça numa distribuição | **Airdrop** |
+| Movi entre carteiras minhas | **Transferência** enviada e recebida |
+| Paguei taxa de rede na própria moeda | **Taxa paga no ativo** |
+| Perdi a chave, ou a corretora quebrou | **Perda definitiva** |
+
+### Cada uma em detalhe
+
+**Compra.** Aumenta a quantidade e o custo. A taxa da corretora entra no custo, porque faz parte do que você pagou pelo bem.
 *Exemplo:* comprou 0,5 BTC a R$ 180.000 com R$ 90 de taxa → custo R$ 90.090.
 
-### Venda
-Você entregou cripto e recebeu dinheiro. Reduz a quantidade, baixa o custo proporcional e apura ganho. A taxa é descontada do que você recebeu.
+**Venda.** Reduz a quantidade, baixa o custo proporcional e apura ganho. A taxa é descontada do que você recebeu.
+*Exemplo:* preço médio de R$ 197.500 e você vende 0,2 BTC por R$ 500.000 cada. Recebeu R$ 100.000, o custo era R$ 39.500, ganho de R$ 60.500.
 
-*Exemplo:* preço médio de R$ 197.500 e você vende 0,2 BTC por R$ 500.000 cada. Recebeu R$ 100.000, o custo daquilo era R$ 39.500, então o ganho é R$ 60.500.
+**Permuta.** Trocou um ativo por outro sem passar por dinheiro. **Gera imposto**, porque o lucro do ativo entregue se realiza na troca.
 
-### Permuta (troca cripto por cripto)
-Trocou um ativo por outro sem passar por dinheiro. **Gera imposto**, porque o lucro do ativo entregue se realiza na troca.
+Preencha o ativo entregue, quanto entregou, o ativo recebido, quanto recebeu, e o **valor total da operação** em reais. O sistema cria dois lançamentos amarrados: uma saída, que apura o ganho, e uma entrada, que forma o custo do novo ativo. Apagar uma perna apaga a outra — é um fato só.
 
-Preencha o ativo entregue, quanto entregou, o ativo recebido, quanto recebeu, e o **valor total da operação** em reais. O sistema cria dois lançamentos amarrados: uma saída, que apura o ganho, e uma entrada, que forma o custo do novo ativo.
+*Exemplo:* entregou 0,3 BTC que custaram R$ 59.250 e recebeu 100 SOL numa operação de R$ 120.000. Ganho de R$ 60.750 no Bitcoin, e as SOL entram com custo de R$ 1.200 cada.
 
-*Exemplo:* entregou 0,3 BTC que custaram R$ 59.250 e recebeu 100 SOL numa operação avaliada em R$ 120.000. Ganho de R$ 60.750 no Bitcoin, e as 100 SOL entram com custo de R$ 120.000, ou R$ 1.200 cada.
+**Rendimento e Airdrop.** Você recebeu cripto sem pagar. Entra pelo **valor de mercado na data**, e esse valor vira o custo daquelas moedas. Quando vender, o lucro conta a partir dali, não a partir de zero.
 
-Apagar uma perna apaga a outra. É um fato só.
+**Transferência recebida / enviada.** Movimentação entre carteiras suas. **Não altera nada**: nem saldo, nem custo, nem imposto. Fica registrada só para o histórico. Não use para envio a terceiros.
 
-### Rendimento e Airdrop
-Você recebeu cripto sem pagar por ela — staking, juros, cashback, distribuição gratuita. Entra pelo **valor de mercado na data**, e esse valor vira o custo de aquisição daquelas moedas.
+**Taxa paga no ativo.** Taxa de rede descontada na própria moeda. Reduz a quantidade e baixa o custo proporcional, sem gerar ganho.
 
-### Transferência recebida / enviada
-Movimentação entre carteiras suas — sacar da corretora para uma wallet, por exemplo. **Não altera nada**: não é compra, não é venda, não muda saldo nem custo. Fica registrada só para o histórico ficar completo.
-
-Não use isso para registrar envio a terceiros.
-
-### Taxa paga no ativo
-Taxa de rede descontada na própria moeda. Reduz a quantidade e baixa o custo proporcional, sem gerar ganho.
-
-### Perda definitiva
-Chave perdida, corretora que quebrou, projeto que evaporou. Reduz quantidade e custo, sem gerar ganho tributável.
+**Perda definitiva.** Chave perdida, corretora quebrada, projeto evaporado. Reduz quantidade e custo, sem gerar ganho tributável.
 
 ---
 
 ## Operações em dólar
 
-Quando você marca a moeda como USD, aparece um campo de **câmbio da data**. Preencha com a cotação do dólar no dia da operação, não a de hoje.
+Quando você marca a moeda como USD, aparece o campo **câmbio da data**. Preencha com a cotação do dólar no dia da operação, não a de hoje.
 
 Isso não é preciosismo. Se você comprou a US$ 20.000 com dólar a R$ 5,00 e vendeu a US$ 25.000 com dólar a R$ 6,00, seu custo foi R$ 100.000 e sua venda foi R$ 150.000. O ganho de R$ 50.000 inclui a valorização do dólar — e ele é tributável.
 
-A fonte oficial para o fisco é a PTAX do Banco Central, disponível no site do BC.
+A fonte oficial para o fisco é a PTAX do Banco Central.
 
 ---
 
-## "Não lembro o que paguei"
+## Como o imposto é calculado
 
-Este é o caso mais comum de quem já mexe com cripto há tempo, e o sistema foi desenhado para ele. Tente nesta ordem:
+### O caminho do dado
 
-**1. Baixe o extrato da corretora.**
-Binance, Mercado Bitcoin, Foxbit, NovaDAX e as demais permitem exportar o histórico completo de operações. Quase todo mundo pode recuperar isso e não sabe. Comece por aqui.
+```
+Lançamentos → apuração → alienações → simulação → tabelas na tela
+```
 
-**2. Olhe sua declaração de IR do ano passado.**
-Se você declarou cripto em Bens e Direitos, aquele valor **é** o seu custo de aquisição oficial. Já existe, é legalmente válido, e é grátis.
+Só **venda** e **permuta de saída** geram alienação. Compra, transferência, rendimento e airdrop não geram imposto no momento em que acontecem.
 
-**3. Reconstrua pela data.**
-Se você lembra mais ou menos quando comprou, procure a cotação daquele dia e use como preço. Marque a comprovação como **Reconstruído pela data**.
+Para cada alienação o sistema calcula três números: quanto foi recebido, quanto daquilo era custo, e a diferença entre os dois.
 
-**4. Arbitre de memória.**
-"Foi por volta de trinta mil." Marque como **Valor de memória**.
+### As duas regras
 
-**5. Assuma custo desconhecido.**
-Marque **Não sei o custo** e deixe o preço em zero. O sistema trata o custo como zero, o que **aumenta** o imposto apurado. É a saída conservadora: se errar, erra pagando a mais, nunca a menos.
+**Regime nacional.** Soma todas as alienações do mês. Se o total ficar abaixo do limite de isenção, o mês é isento, mesmo com lucro. Acima disso, aplica a tabela progressiva sobre o ganho.
 
-Seja qual for o caminho, o sistema registra o nível de comprovação e mostra na tela. Uma carteira com 40% de comprovação continua funcionando — você só sabe o quanto pode confiar no resultado.
+**Regime exterior.** Soma o ano inteiro, prejuízos abatem lucros dentro do período, alíquota fixa. Sem isenção por volume.
+
+O regime vem **do lançamento**, não do ativo. O mesmo Bitcoin pode gerar uma venda nacional e uma no exterior no mesmo mês, e cada uma vai para sua tabela.
+
+### Sobre prejuízos
+
+Por padrão o sistema **não** abate prejuízo do lucro no regime nacional — leitura conservadora, operação a operação. A tela mostra os dois números, **Ganho bruto** e **Resultado líquido**, justamente para o contador decidir qual usar.
+
+### Onde ficam as fórmulas
+
+Em `motor/src/tributacao.ts`, separadas em duas camadas de propósito:
+
+- **Os números da lei** ficam num objeto chamado `PARAMETROS_BR_2026`: limite de isenção, faixas de alíquota, alíquota do exterior, e a chave de compensação de perdas.
+- **O algoritmo** fica nas funções `simularMensalNacional` e `simularAnualExterior`.
+
+Quando a lei muda, você mexe nos números, não na lógica.
+
+### Como manter atualizado
+
+Nada verifica a lei automaticamente. Recomenda-se:
+
+1. Um lembrete anual, em janeiro, para revisar os parâmetros
+2. Acompanhar as publicações da Receita Federal sobre ativos digitais
+3. Atenção à substituição da IN 1.888/2019 pela DeCripto, que amplia a obrigação para exchanges estrangeiras e plataformas DeFi
+
+Depois de qualquer alteração:
+
+```bash
+cd motor
+npm test
+npx esbuild src/index.ts --bundle --format=iife \
+  --global-name=Motor --outfile=../apps/web/motor.js --target=es2020
+```
+
+Os testes rodam antes do build. Se algo quebrar, você descobre ali.
 
 ---
 
@@ -207,41 +250,47 @@ Seja qual for o caminho, o sistema registra o nível de comprovação e mostra n
 Não. Lance cada compra e o preço médio se recalcula sozinho.
 
 **Vendi mais do que tenho e o sistema recusou.**
-Correto. Significa que falta registrar alguma aquisição anterior. Lance a compra que está faltando e tente de novo.
+Correto. Falta registrar alguma aquisição anterior. Lance a compra que está faltando e tente de novo.
 
 **Mandei Bitcoin da corretora para minha wallet. O que lanço?**
-Transferência enviada, e depois transferência recebida. Nenhuma das duas altera seu saldo — servem só para o histórico.
+Transferência enviada, depois transferência recebida. Nenhuma altera seu saldo.
 
-**Vendi com prejuízo. O sistema conta isso?**
-Sim, mas com cuidado. No regime nacional, por padrão o sistema **não** abate prejuízo do lucro — é a leitura conservadora. A coluna "Resultado líquido" mostra o número com abatimento, para você conferir com seu contador. No regime exterior, o abatimento é aplicado dentro do ano.
+**Quero remover um ativo mas o sistema não deixa.**
+Ele tem lançamentos no livro. Se sumisse da lista, a posição continuaria sendo calculada mas não apareceria em lugar nenhum. Apague os lançamentos primeiro.
 
 **Apaguei um lançamento por engano.**
-Não há desfazer. Lance de novo. Por isso exporte a carteira com frequência.
+Não há desfazer. Lance de novo. Por isso exporte com frequência.
 
 **Troquei de computador e sumiu tudo.**
-Os dados ficam no navegador, não numa conta. Use Exportar carteira no computador antigo e Importar no novo. Sincronização em nuvem está no plano, mas ainda não existe.
+Os dados ficam no navegador, não numa conta. Use Exportar no aparelho antigo e Importar no novo.
 
 **Limpei o histórico do navegador.**
-Se você apagou dados de sites, perdeu. Exporte com frequência.
+Se apagou dados de sites, perdeu. Exporte com frequência.
+
+**Digitei com ponto e o valor ficou estranho.**
+O sistema mostra embaixo do formulário como interpretou o número, antes de você gravar. Confira ali. A regra: o último separador é o decimal, e ponto isolado com três casas é milhar — `180.000` é cento e oitenta mil, mas `0.001` é um milésimo.
 
 ---
 
 ## O que este sistema não é
 
-- **Não é uma corretora.** Ele não compra, não vende, não guarda cripto. Só registra.
+- **Não é uma corretora.** Não compra, não vende, não guarda cripto. Só registra.
 - **Não é conselho de investimento.** Não sugere o que comprar nem prevê preço.
-- **Não é apuração fiscal oficial.** A seção de imposto é simulação, feita a partir do que você digitou. Antes de declarar ou pagar qualquer coisa, leve os números para um contador.
+- **Não é apuração fiscal oficial.** A seção de imposto é simulação, feita a partir do que você digitou. Antes de declarar ou pagar, leve os números a um contador.
 - **Não substitui seus comprovantes.** Guarde os extratos. O sistema organiza, mas quem comprova é o documento.
 
 ---
 
 ## Onde ficam os dados
 
-Tudo é gravado no seu próprio navegador, na máquina que você está usando. Nada vai para servidor nenhum. Os únicos dados que saem do seu computador são consultas de preço à CoinGecko, que não incluem nada sobre você.
+Tudo é gravado no seu próprio navegador, na máquina que você está usando. Nada vai para servidor nenhum. Os únicos dados que saem do seu computador são consultas de preço, que não incluem nada sobre você.
 
-Isso tem uma vantagem — privacidade total — e uma desvantagem — não sincroniza entre aparelhos e some se você limpar o navegador.
+Isso tem uma vantagem e uma desvantagem, e vale entender que são coisas diferentes:
 
-**Exporte sua carteira regularmente.** É um arquivo pequeno com sua lista, seus lançamentos e o histórico de patrimônio.
+- **Privacidade:** máxima. Nada seu está armazenado em lugar nenhum além da sua máquina.
+- **Segurança dos dados:** baixa. Não há backup automático nem recuperação. Limpou o navegador, perdeu.
+
+**Exporte sua carteira regularmente.** É um arquivo pequeno com lista de ativos, lançamentos e histórico de patrimônio.
 
 ---
 
