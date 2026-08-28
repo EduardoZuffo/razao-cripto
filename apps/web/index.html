@@ -260,6 +260,78 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
   .cell-in{width:84px}
   .hide-sm{display:none}
 }
+
+/* ═══ barra de comando fixa ═══ */
+.comando{
+  position:sticky;top:0;z-index:20;background:var(--paper);
+  border-bottom:2px solid var(--ink);margin:0 calc(-1 * var(--sheet-pad) - 22px);
+  padding:12px calc(var(--sheet-pad) + 22px) 0;
+}
+.comando-topo{
+  display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;
+  gap:10px 20px;padding-bottom:12px;
+}
+.marca{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+.marca h1{font-size:13px;font-weight:600;letter-spacing:.26em;text-transform:uppercase;white-space:nowrap}
+.resumo{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.resumo .cifra{font-size:20px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1}
+.resumo .delta{font-size:13px;font-weight:600;font-variant-numeric:tabular-nums}
+.comando-acoes{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+
+/* ═══ abas ═══ */
+.abas{display:flex;gap:0;overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none}
+.abas::-webkit-scrollbar{display:none}
+.aba{
+  font-family:'IBM Plex Sans Condensed',sans-serif;font-size:12px;font-weight:600;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--muted);
+  background:transparent;border:0;border-bottom:3px solid transparent;
+  padding:9px 16px;cursor:pointer;white-space:nowrap;margin-bottom:-2px;
+}
+.aba:hover{color:var(--ink)}
+.aba[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--stamp)}
+.aba .marcador{color:var(--stamp);margin-left:5px;font-size:10px}
+
+.vista{display:none;padding-top:4px}
+.vista.ativa{display:block}
+.vista section:first-of-type{padding-top:22px}
+
+/* ═══ modal de lançamento ═══ */
+.fundo{
+  position:fixed;inset:0;background:rgba(26,31,24,.55);z-index:40;
+  display:none;align-items:flex-start;justify-content:center;padding:24px 12px;overflow-y:auto;
+}
+.fundo.aberto{display:flex}
+.dialogo{
+  background:var(--paper);border:1px solid var(--ink);max-width:820px;width:100%;
+  box-shadow:0 20px 50px rgba(20,28,16,.4);padding:22px 26px 26px;position:relative;
+}
+.dialogo-topo{
+  display:flex;align-items:baseline;justify-content:space-between;gap:16px;
+  border-bottom:2px solid var(--ink);padding-bottom:10px;margin-bottom:18px;
+}
+.dialogo-topo h2{font-size:13px;font-weight:600;letter-spacing:.18em;text-transform:uppercase}
+.fechar{
+  background:transparent;border:0;font-family:inherit;font-size:22px;line-height:1;
+  color:var(--muted);cursor:pointer;padding:0 4px;
+}
+.fechar:hover{color:var(--ink)}
+
+/* ═══ ajustes de tabela ═══ */
+.tabela-vazia{font-family:'IBM Plex Sans Condensed',sans-serif;color:var(--muted);padding:26px 0;text-align:center}
+.atalho{
+  font-family:'IBM Plex Sans Condensed',sans-serif;font-size:12px;
+  color:var(--muted);margin-top:10px;
+}
+.atalho b{color:var(--ink);font-weight:600}
+
+@media (max-width:760px){
+  .comando{margin:0 calc(-1 * var(--sheet-pad));padding:10px var(--sheet-pad) 0}
+  .marca h1{font-size:11px;letter-spacing:.18em}
+  .resumo .cifra{font-size:17px}
+  .aba{padding:8px 12px;font-size:11px;letter-spacing:.1em}
+  .dialogo{padding:16px}
+}
+
 @media (prefers-reduced-motion:reduce){*{animation-duration:.001ms!important;transition-duration:.001ms!important}}
 </style>
 </head>
@@ -267,350 +339,426 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
 
 <main class="sheet">
 
-  <div class="masthead">
-    <h1>Livro-razão de criptoativos</h1>
-    <p class="folio">
-      <span>Folha <b id="folio">—</b></span>
-      <span>Apurado em <b id="apurado">—</b></span>
-      <span class="chipset" role="group" aria-label="Moeda de referência">
-        <button class="chip" data-moeda="usd" aria-pressed="true">USD</button>
-        <button class="chip" data-moeda="brl">BRL</button>
-      </span>
-    </p>
+  <!-- ═══ BARRA DE COMANDO ═══ -->
+  <div class="comando">
+    <div class="comando-topo">
+      <div class="marca">
+        <h1>Livro-razão</h1>
+        <div class="resumo" id="resumo-topo">
+          <span class="eyebrow">Patrimônio</span>
+          <span class="cifra num" id="topo-valor">—</span>
+          <span class="delta num" id="topo-delta"></span>
+        </div>
+      </div>
+      <div class="comando-acoes">
+        <span class="chipset" role="group" aria-label="Moeda de referência">
+          <button class="chip" data-moeda="usd" aria-pressed="true">USD</button>
+          <button class="chip" data-moeda="brl">BRL</button>
+        </span>
+        <button class="solid" id="abrir-lancamento">+ Lançar</button>
+      </div>
+    </div>
+
+    <div class="abas" role="tablist">
+      <button class="aba" data-vista="carteira" role="tab" aria-selected="true">Carteira</button>
+      <button class="aba" data-vista="mercado"  role="tab" aria-selected="false">Mercado</button>
+      <button class="aba" data-vista="ativo"    role="tab" aria-selected="false" id="aba-ativo">Ativo</button>
+      <button class="aba" data-vista="livro"    role="tab" aria-selected="false">Livro</button>
+      <button class="aba" data-vista="imposto"  role="tab" aria-selected="false">Imposto</button>
+    </div>
   </div>
 
   <div id="erro" class="strip" role="alert"></div>
 
-  <!-- ══════ PATRIMÔNIO ══════ -->
-  <section>
-    <div class="sec-head">
-      <h2>Patrimônio</h2>
-      <p class="note" id="patrimonio-nota">—</p>
-    </div>
-
-    <div id="patrimonio-vazio" class="empty" hidden>
-      Nenhuma posição informada ainda.<br>
-      Abra <b>Posições</b> na razão geral abaixo e preencha quantidade e preço médio.
-    </div>
-
-    <div id="patrimonio-bloco" hidden>
-      <div class="destaque">
-        <div>
-          <p class="eyebrow">Valor de mercado</p>
-          <p class="total num" id="pat-total">—</p>
-        </div>
-        <dl class="saldos" id="pat-saldos"></dl>
+  <!-- ══════════════ CARTEIRA ══════════════ -->
+  <div class="vista ativa" id="v-carteira" role="tabpanel">
+    <section>
+      <div class="sec-head">
+        <h2>Patrimônio</h2>
+        <p class="note" id="patrimonio-nota">—</p>
       </div>
 
-      <p class="eyebrow">Composição</p>
-      <div class="composicao" id="composicao"></div>
-      <div class="comp-legenda" id="comp-legenda"></div>
-
-      <div style="margin-top:24px">
-        <div class="sec-head">
-          <h2 style="font-size:12px">Evolução do patrimônio</h2>
-          <p class="note" id="hist-nota">—</p>
-        </div>
-        <div class="plot baixo"><canvas id="c-patrimonio"></canvas></div>
-        <div class="legend" id="hist-legenda"></div>
+      <div id="patrimonio-vazio" class="empty" hidden>
+        Nenhuma posição ainda.<br>
+        Use <b>+ Lançar</b> lá em cima para registrar sua primeira compra.
       </div>
-    </div>
-  </section>
 
-  <!-- ══════ RAZÃO GERAL ══════ -->
-  <section>
-    <div class="sec-head">
-      <h2>Razão geral</h2>
-      <p class="note" id="razao-nota">—</p>
-    </div>
-
-    <div class="toolbar">
-      <span class="chipset" role="group" aria-label="Modo de exibição">
-        <button class="chip" data-modo="cotacoes" aria-pressed="true">Cotações</button>
-        <button class="chip" data-modo="posicoes">Posições</button>
-      </span>
-      <button class="ghost" id="copiar">Copiar tabela</button>
-      <button class="ghost" id="atualizar">Atualizar cotações</button>
-      <span class="chipset"><button class="chip" id="auto">Atualização automática</button></span>
-    </div>
-
-    <div class="table-wrap">
-      <table id="razao">
-        <thead id="razao-cab"></thead>
-        <tbody id="razao-corpo"></tbody>
-        <tfoot id="razao-rodape"></tfoot>
-      </table>
-    </div>
-    <p class="aviso" id="aviso-cambio" hidden></p>
-
-    <details>
-      <summary>Gerenciar ativos e dados</summary>
-      <div class="panel">
-        <div class="field" style="width:100%">
-          <label for="busca">Adicionar ativo</label>
-          <input type="search" id="busca" placeholder="bitcoin, sol, render…" autocomplete="off">
+      <div id="patrimonio-bloco" hidden>
+        <div class="destaque">
+          <div>
+            <p class="eyebrow">Valor de mercado</p>
+            <p class="total num" id="pat-total">—</p>
+          </div>
+          <dl class="saldos" id="pat-saldos"></dl>
         </div>
-        <ul class="results" id="resultados" hidden></ul>
 
-        <div class="field" style="width:100%">
-          <label for="lista">Lista de ativos (IDs da CoinGecko, separados por vírgula)</label>
-          <textarea id="lista" rows="4" spellcheck="false"></textarea>
-        </div>
-        <div class="toolbar" style="margin:0">
-          <button class="solid" id="aplicar-lista">Aplicar lista</button>
-          <button class="ghost" id="restaurar">Restaurar padrão</button>
-          <button class="ghost" id="exportar">Exportar carteira</button>
-          <button class="ghost" id="importar">Importar carteira</button>
-          <input type="file" id="arquivo" accept="application/json" hidden>
-        </div>
-        <p class="aviso">
-          A exportação inclui lista, quantidades, preços médios e histórico de patrimônio.
-          Guarde o arquivo antes de limpar os dados do navegador.
-        </p>
-      </div>
-    </details>
-  </section>
+        <p class="eyebrow">Composição</p>
+        <div class="composicao" id="composicao"></div>
+        <div class="comp-legenda" id="comp-legenda"></div>
 
-  <!-- ══════ LIVRO DE LANÇAMENTOS ══════ -->
-  <section>
-    <div class="sec-head">
-      <h2>Livro de lançamentos</h2>
-      <p class="note" id="livro-nota">—</p>
-    </div>
-
-    <details id="painel-lancamento">
-      <summary>Novo lançamento</summary>
-      <div class="panel">
-        <div class="form-grid">
-          <div class="field">
-            <label for="f-tipo">Operação</label>
-            <select id="f-tipo">
-              <option value="compra">Compra</option>
-              <option value="venda">Venda</option>
-              <option value="permuta">Permuta (troca cripto por cripto)</option>
-              <option value="rendimento">Rendimento / staking</option>
-              <option value="airdrop">Airdrop</option>
-              <option value="transferencia_entrada">Transferência recebida</option>
-              <option value="transferencia_saida">Transferência enviada</option>
-              <option value="taxa">Taxa paga no ativo</option>
-              <option value="perda">Perda definitiva</option>
-            </select>
+        <div style="margin-top:24px">
+          <div class="sec-head">
+            <h2 style="font-size:12px">Evolução do patrimônio</h2>
+            <p class="note" id="hist-nota">—</p>
           </div>
-          <div class="field">
-            <label for="f-ativo" id="rot-ativo">Ativo</label>
-            <select id="f-ativo"></select>
-          </div>
-          <div class="field">
-            <label for="f-data">Data</label>
-            <input type="date" id="f-data">
-          </div>
-          <div class="field">
-            <label for="f-qtd" id="rot-qtd">Quantidade</label>
-            <input type="text" inputmode="decimal" id="f-qtd" placeholder="0,00000000">
-          </div>
-          <div class="field" id="c-ativo2">
-            <label for="f-ativo2">Ativo recebido</label>
-            <select id="f-ativo2"></select>
-          </div>
-          <div class="field" id="c-qtd2">
-            <label for="f-qtd2">Quantidade recebida</label>
-            <input type="text" inputmode="decimal" id="f-qtd2" placeholder="0,00000000">
-          </div>
-          <div class="field" id="c-preco">
-            <label for="f-preco" id="rot-preco">Preço unitário</label>
-            <input type="text" inputmode="decimal" id="f-preco" placeholder="0,00">
-          </div>
-          <div class="field" id="c-moeda">
-            <label for="f-moeda">Moeda</label>
-            <select id="f-moeda"><option value="BRL">BRL</option><option value="USD">USD</option></select>
-          </div>
-          <div class="field oculto" id="c-cambio">
-            <label for="f-cambio">Câmbio da data (BRL por USD)</label>
-            <input type="text" inputmode="decimal" id="f-cambio" placeholder="5,00">
-          </div>
-          <div class="field" id="c-taxa">
-            <label for="f-taxa">Taxa</label>
-            <input type="text" inputmode="decimal" id="f-taxa" placeholder="0,00">
-          </div>
-          <div class="field">
-            <label for="f-regime">Regime</label>
-            <select id="f-regime">
-              <option value="nacional">Nacional</option>
-              <option value="exterior">Exterior / DeFi</option>
-            </select>
-          </div>
-          <div class="field" id="c-confianca">
-            <label for="f-confianca">Comprovação</label>
-            <select id="f-confianca">
-              <option value="documentado">Tenho extrato</option>
-              <option value="estimado">Reconstruído pela data</option>
-              <option value="arbitrado">Valor de memória</option>
-              <option value="ausente">Não sei o custo</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="f-corretora">Corretora / custódia</label>
-            <input type="text" id="f-corretora" placeholder="opcional">
-          </div>
-        </div>
-        <div class="toolbar" style="margin:0">
-          <button class="solid" id="f-gravar">Lançar</button>
-          <span class="aviso" id="f-dica"></span>
-        </div>
-        <div class="toolbar" style="margin:0">
-          <span class="aviso" id="f-preview"></span>
+          <div class="plot baixo"><canvas id="c-patrimonio"></canvas></div>
+          <div class="legend" id="hist-legenda"></div>
         </div>
       </div>
-    </details>
+    </section>
 
-    <div class="table-wrap" style="margin-top:16px">
-      <table>
-        <thead>
-          <tr>
-            <th class="lead">Data</th>
-            <th class="lead">Operação</th>
-            <th class="lead">Ativo</th>
-            <th>Quantidade</th>
-            <th class="hide-sm">Preço</th>
-            <th class="hide-sm">Regime</th>
-            <th class="hide-sm">Comprovação</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody id="livro-corpo"></tbody>
-      </table>
+    <section>
+      <div class="sec-head">
+        <h2>Posições</h2>
+        <p class="note">Calculadas a partir do livro de lançamentos</p>
+      </div>
+      <div class="table-wrap">
+        <table id="posicoes">
+          <thead>
+            <tr>
+              <th class="lead sortable" data-col="symbol">Ativo</th>
+              <th class="sortable" data-col="qtd">Quantidade</th>
+              <th class="sortable" data-col="pm">Preço médio</th>
+              <th class="sortable" data-col="valor" aria-sort="descending">Valor</th>
+              <th class="sortable hide-sm" data-col="custo">Custo</th>
+              <th class="sortable" data-col="res">Resultado</th>
+              <th class="sortable hide-sm" data-col="doc">Comprovação</th>
+              <th class="sortable hide-sm" data-col="part">Part.</th>
+            </tr>
+          </thead>
+          <tbody id="posicoes-corpo"></tbody>
+          <tfoot id="posicoes-rodape"></tfoot>
+        </table>
+      </div>
+      <p class="atalho">Clique numa linha para abrir a análise do ativo.</p>
+      <p class="aviso" id="aviso-doc" hidden></p>
+
+      <details>
+        <summary>Cópia de segurança</summary>
+        <div class="panel">
+          <p class="aviso" style="margin:0">
+            Os dados ficam apenas neste navegador. Exporte de tempos em tempos —
+            o arquivo traz lista de ativos, lançamentos e histórico de patrimônio.
+          </p>
+          <div class="toolbar" style="margin:0">
+            <button class="solid" id="exportar">Exportar carteira</button>
+            <button class="ghost" id="importar">Importar carteira</button>
+            <input type="file" id="arquivo" accept="application/json" hidden>
+          </div>
+        </div>
+      </details>
+    </section>
+  </div>
+
+  <!-- ══════════════ MERCADO ══════════════ -->
+  <div class="vista" id="v-mercado" role="tabpanel">
+    <section>
+      <div class="sec-head">
+        <h2>Cotações</h2>
+        <p class="note" id="razao-nota">—</p>
+      </div>
+
+      <div class="toolbar">
+        <button class="ghost" id="atualizar">Atualizar</button>
+        <span class="chipset"><button class="chip" id="auto">Atualização automática</button></span>
+        <button class="ghost" id="copiar">Copiar para planilha</button>
+      </div>
+
+      <div class="table-wrap">
+        <table id="razao">
+          <thead>
+            <tr>
+              <th class="lead sortable" data-col="symbol">Ativo</th>
+              <th class="sortable" data-col="price">Cotação</th>
+              <th class="sortable" data-col="c24">24 h</th>
+              <th class="sortable hide-sm" data-col="c7">7 d</th>
+              <th class="sortable hide-sm" data-col="c30">30 d</th>
+              <th class="hide-sm">7 dias</th>
+              <th class="sortable hide-sm" data-col="mc" aria-sort="descending">Capitalização</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="razao-corpo"></tbody>
+        </table>
+      </div>
+      <p class="atalho">Clique numa linha para abrir a análise do ativo.</p>
+    </section>
+
+    <section class="last">
+      <div class="sec-head">
+        <h2>Ativos acompanhados</h2>
+      </div>
+      <div class="field" style="max-width:420px">
+        <label for="busca">Adicionar ativo</label>
+        <input type="search" id="busca" placeholder="bitcoin, sol, render…" autocomplete="off">
+      </div>
+      <ul class="results" id="resultados" hidden></ul>
+
+      <details>
+        <summary>Editar lista por texto</summary>
+        <div class="panel">
+          <div class="field" style="width:100%">
+            <label for="lista">IDs da CoinGecko, separados por vírgula</label>
+            <textarea id="lista" rows="4" spellcheck="false"></textarea>
+          </div>
+          <div class="toolbar" style="margin:0">
+            <button class="solid" id="aplicar-lista">Aplicar lista</button>
+            <button class="ghost" id="restaurar">Restaurar padrão</button>
+          </div>
+        </div>
+      </details>
+    </section>
+  </div>
+
+  <!-- ══════════════ ATIVO ══════════════ -->
+  <div class="vista" id="v-ativo" role="tabpanel">
+    <div class="destaque" style="padding:26px 0 20px">
+      <div>
+        <p class="eyebrow" id="foco-nome">—</p>
+        <p class="total num" id="preco">—</p>
+        <span id="foco-posicao" class="aviso"></span>
+      </div>
+      <dl class="saldos" id="variacoes"></dl>
     </div>
-  </section>
 
-  <!-- ══════ APURAÇÃO FISCAL ══════ -->
-  <section>
-    <div class="sec-head">
-      <h2>Apuração fiscal</h2>
-      <p class="note">Valores sempre em reais, conforme a legislação</p>
-    </div>
+    <section>
+      <div class="sec-head">
+        <h2>Semana corrente</h2>
+        <p class="note">Últimos 7 dias · hora a hora</p>
+      </div>
+      <div class="plot"><canvas id="c-semana"></canvas></div>
+    </section>
 
-    <div class="disclaimer" id="disclaimer"></div>
-    <ul class="avisos" id="avisos-motor"></ul>
+    <section>
+      <div class="sec-head">
+        <h2>Exercício anual</h2>
+        <p class="note" id="ano-nota">365 dias · fechamento diário</p>
+      </div>
+      <div class="toolbar">
+        <span class="eyebrow" style="align-self:center">Comparar com</span>
+        <span class="chipset" id="comparar"></span>
+      </div>
+      <div class="plot"><canvas id="c-ano"></canvas></div>
+      <div class="legend" id="legenda"></div>
+    </section>
 
-    <div style="margin-top:20px">
-      <p class="eyebrow">Regime nacional — apuração mensal</p>
-      <div class="table-wrap" style="margin-top:8px">
+    <section>
+      <div class="sec-head">
+        <h2>Período selecionado</h2>
+        <p class="note" id="periodo-nota">—</p>
+      </div>
+      <div class="toolbar">
+        <span class="chipset" role="group" aria-label="Atalhos de período">
+          <button class="chip" data-dias="7">7 dias</button>
+          <button class="chip" data-dias="30">30 dias</button>
+          <button class="chip" data-dias="90">90 dias</button>
+          <button class="chip" data-dias="365" aria-pressed="true">1 ano</button>
+        </span>
+        <div class="field"><label for="de">De</label><input type="date" id="de"></div>
+        <div class="field"><label for="ate">Até</label><input type="date" id="ate"></div>
+        <button class="solid" id="aplicar-datas">Aplicar</button>
+      </div>
+      <div class="plot"><canvas id="c-periodo"></canvas></div>
+    </section>
+
+    <section class="last">
+      <div class="sec-head">
+        <h2>Série histórica</h2>
+        <button class="ghost" id="csv">Baixar CSV</button>
+      </div>
+      <div class="table-wrap">
         <table>
           <thead>
             <tr>
-              <th class="lead">Competência</th>
-              <th>Alienações</th>
-              <th class="hide-sm">Ganho bruto</th>
-              <th class="hide-sm">Resultado líquido</th>
-              <th>Base</th>
-              <th>Imposto</th>
+              <th class="lead sortable" data-col="d" aria-sort="descending">Data</th>
+              <th class="sortable" data-col="p">Fechamento</th>
+              <th class="sortable" data-col="v">Variação</th>
+              <th class="sortable hide-sm" data-col="vol">Volume 24 h</th>
+              <th class="sortable hide-sm" data-col="mc">Capitalização</th>
             </tr>
           </thead>
-          <tbody id="fiscal-nacional"></tbody>
+          <tbody id="serie-corpo"></tbody>
         </table>
       </div>
-    </div>
+    </section>
+  </div>
 
-    <div style="margin-top:24px">
-      <p class="eyebrow">Regime exterior — apuração anual</p>
-      <div class="table-wrap" style="margin-top:8px">
+  <!-- ══════════════ LIVRO ══════════════ -->
+  <div class="vista" id="v-livro" role="tabpanel">
+    <section class="last">
+      <div class="sec-head">
+        <h2>Livro de lançamentos</h2>
+        <p class="note" id="livro-nota">—</p>
+      </div>
+      <div class="toolbar">
+        <button class="solid" id="abrir-lancamento-2">+ Novo lançamento</button>
+      </div>
+      <div class="table-wrap">
         <table>
           <thead>
             <tr>
-              <th class="lead">Ano</th>
-              <th>Alienações</th>
-              <th class="hide-sm">Resultado líquido</th>
-              <th>Base</th>
-              <th>Imposto</th>
+              <th class="lead">Data</th>
+              <th class="lead">Operação</th>
+              <th class="lead">Ativo</th>
+              <th>Quantidade</th>
+              <th class="hide-sm">Preço</th>
+              <th class="hide-sm">Regime</th>
+              <th class="hide-sm">Comprovação</th>
+              <th></th>
             </tr>
           </thead>
-          <tbody id="fiscal-exterior"></tbody>
+          <tbody id="livro-corpo"></tbody>
         </table>
       </div>
-    </div>
-  </section>
-
-  <!-- ══════ CONTA ANALÍTICA ══════ -->
-  <div class="divider">
-    <span class="eyebrow">Conta analítica</span>
-    <strong id="foco-nome">—</strong>
+    </section>
   </div>
 
-  <div class="destaque" style="padding:22px 0 20px">
-    <div>
-      <p class="eyebrow">Cotação de fechamento</p>
-      <p class="total num" id="preco">—</p>
-      <span id="foco-posicao" class="aviso"></span>
-    </div>
-    <dl class="saldos" id="variacoes"></dl>
+  <!-- ══════════════ IMPOSTO ══════════════ -->
+  <div class="vista" id="v-imposto" role="tabpanel">
+    <section class="last">
+      <div class="sec-head">
+        <h2>Apuração fiscal</h2>
+        <p class="note">Sempre em reais, conforme a legislação</p>
+      </div>
+
+      <div class="disclaimer" id="disclaimer"></div>
+      <ul class="avisos" id="avisos-motor"></ul>
+
+      <div style="margin-top:22px">
+        <p class="eyebrow">Regime nacional — apuração mensal</p>
+        <div class="table-wrap" style="margin-top:8px">
+          <table>
+            <thead>
+              <tr>
+                <th class="lead">Competência</th>
+                <th>Alienações</th>
+                <th class="hide-sm">Ganho bruto</th>
+                <th class="hide-sm">Resultado líquido</th>
+                <th>Base</th>
+                <th>Imposto</th>
+              </tr>
+            </thead>
+            <tbody id="fiscal-nacional"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div style="margin-top:26px">
+        <p class="eyebrow">Regime exterior — apuração anual</p>
+        <div class="table-wrap" style="margin-top:8px">
+          <table>
+            <thead>
+              <tr>
+                <th class="lead">Ano</th>
+                <th>Alienações</th>
+                <th class="hide-sm">Resultado líquido</th>
+                <th>Base</th>
+                <th>Imposto</th>
+              </tr>
+            </thead>
+            <tbody id="fiscal-exterior"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
   </div>
-
-  <section>
-    <div class="sec-head">
-      <h2>Semana corrente</h2>
-      <p class="note">Últimos 7 dias · leitura de hora em hora</p>
-    </div>
-    <div class="plot"><canvas id="c-semana"></canvas></div>
-  </section>
-
-  <section>
-    <div class="sec-head">
-      <h2>Exercício anual</h2>
-      <p class="note" id="ano-nota">365 dias · fechamento diário</p>
-    </div>
-    <div class="toolbar">
-      <span class="eyebrow" style="align-self:center">Comparar com</span>
-      <span class="chipset" id="comparar"></span>
-    </div>
-    <div class="plot"><canvas id="c-ano"></canvas></div>
-    <div class="legend" id="legenda"></div>
-  </section>
-
-  <section>
-    <div class="sec-head">
-      <h2>Período selecionado</h2>
-      <p class="note" id="periodo-nota">—</p>
-    </div>
-    <div class="toolbar">
-      <span class="chipset" role="group" aria-label="Atalhos de período">
-        <button class="chip" data-dias="7">7 dias</button>
-        <button class="chip" data-dias="30">30 dias</button>
-        <button class="chip" data-dias="90">90 dias</button>
-        <button class="chip" data-dias="365" aria-pressed="true">1 ano</button>
-      </span>
-      <div class="field"><label for="de">De</label><input type="date" id="de"></div>
-      <div class="field"><label for="ate">Até</label><input type="date" id="ate"></div>
-      <button class="solid" id="aplicar-datas">Aplicar datas</button>
-    </div>
-    <div class="plot"><canvas id="c-periodo"></canvas></div>
-  </section>
-
-  <section class="last">
-    <div class="sec-head">
-      <h2>Série histórica</h2>
-      <button class="ghost" id="csv">Baixar CSV</button>
-    </div>
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th class="lead sortable" data-col="d" aria-sort="descending">Data</th>
-            <th class="sortable" data-col="p">Fechamento</th>
-            <th class="sortable" data-col="v">Variação</th>
-            <th class="sortable hide-sm" data-col="vol">Volume 24 h</th>
-            <th class="sortable hide-sm" data-col="mc">Capitalização</th>
-          </tr>
-        </thead>
-        <tbody id="serie-corpo"></tbody>
-      </table>
-    </div>
-  </section>
 
   <footer>
-    <span>CoinGecko API pública, sem chave · dados guardados neste navegador</span>
-    <span>Plano gratuito: histórico limitado a 365 dias</span>
+    <span>CoinGecko API pública · dados guardados neste navegador</span>
+    <span>Apurado em <b id="apurado">—</b> · folha <b id="folio">—</b></span>
   </footer>
 </main>
+
+<!-- ═══ MODAL DE LANÇAMENTO ═══ -->
+<div class="fundo" id="modal" role="dialog" aria-modal="true" aria-labelledby="modal-titulo">
+  <div class="dialogo">
+    <div class="dialogo-topo">
+      <h2 id="modal-titulo">Novo lançamento</h2>
+      <button class="fechar" id="fechar-modal" aria-label="Fechar">×</button>
+    </div>
+
+    <div class="form-grid">
+      <div class="field">
+        <label for="f-tipo">Operação</label>
+        <select id="f-tipo">
+          <option value="compra">Compra</option>
+          <option value="venda">Venda</option>
+          <option value="permuta">Permuta (troca cripto por cripto)</option>
+          <option value="rendimento">Rendimento / staking</option>
+          <option value="airdrop">Airdrop</option>
+          <option value="transferencia_entrada">Transferência recebida</option>
+          <option value="transferencia_saida">Transferência enviada</option>
+          <option value="taxa">Taxa paga no ativo</option>
+          <option value="perda">Perda definitiva</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="f-ativo" id="rot-ativo">Ativo</label>
+        <select id="f-ativo"></select>
+      </div>
+      <div class="field">
+        <label for="f-data">Data</label>
+        <input type="date" id="f-data">
+      </div>
+      <div class="field">
+        <label for="f-qtd" id="rot-qtd">Quantidade</label>
+        <input type="text" inputmode="decimal" id="f-qtd" placeholder="0,00000000">
+      </div>
+      <div class="field" id="c-ativo2">
+        <label for="f-ativo2">Ativo recebido</label>
+        <select id="f-ativo2"></select>
+      </div>
+      <div class="field" id="c-qtd2">
+        <label for="f-qtd2">Quantidade recebida</label>
+        <input type="text" inputmode="decimal" id="f-qtd2" placeholder="0,00000000">
+      </div>
+      <div class="field" id="c-preco">
+        <label for="f-preco" id="rot-preco">Preço unitário</label>
+        <input type="text" inputmode="decimal" id="f-preco" placeholder="0,00">
+      </div>
+      <div class="field" id="c-moeda">
+        <label for="f-moeda">Moeda</label>
+        <select id="f-moeda"><option value="BRL">BRL</option><option value="USD">USD</option></select>
+      </div>
+      <div class="field oculto" id="c-cambio">
+        <label for="f-cambio">Câmbio da data</label>
+        <input type="text" inputmode="decimal" id="f-cambio" placeholder="5,00">
+      </div>
+      <div class="field" id="c-taxa">
+        <label for="f-taxa">Taxa</label>
+        <input type="text" inputmode="decimal" id="f-taxa" placeholder="0,00">
+      </div>
+      <div class="field">
+        <label for="f-regime">Regime</label>
+        <select id="f-regime">
+          <option value="nacional">Nacional</option>
+          <option value="exterior">Exterior / DeFi</option>
+        </select>
+      </div>
+      <div class="field" id="c-confianca">
+        <label for="f-confianca">Comprovação</label>
+        <select id="f-confianca">
+          <option value="documentado">Tenho extrato</option>
+          <option value="estimado">Reconstruído pela data</option>
+          <option value="arbitrado">Valor de memória</option>
+          <option value="ausente">Não sei o custo</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="f-corretora">Corretora / custódia</label>
+        <input type="text" id="f-corretora" placeholder="opcional">
+      </div>
+    </div>
+
+    <p class="aviso" id="f-dica" style="margin-top:0"></p>
+    <p class="aviso" id="f-preview"></p>
+
+    <div class="toolbar" style="margin:16px 0 0">
+      <button class="solid" id="f-gravar">Lançar</button>
+      <button class="ghost" id="f-cancelar">Cancelar</button>
+    </div>
+  </div>
+</div>
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
@@ -672,7 +820,7 @@ const PADRAO = ['bitcoin','ethereum','solana','chainlink','render-token','inject
 
 const estado = {
   moeda:     store.ler('cfg:moeda', 'usd'),
-  modo:      store.ler('cfg:modo', 'cotacoes'),
+  vista:     'carteira',
   lista:     store.ler('carteira', PADRAO),
   lancamentos: store.ler('lancamentos', []),
   apuracao:  { posicoes: [], alienacoes: [], avisos: [] },
@@ -681,6 +829,7 @@ const estado = {
   mercado: [], ano: [], periodo: [], comparar: [],
   fx: 1,
   ordemRazao: { col:'mc', desc:true },
+  ordemPosicoes: { col:'valor', desc:true },
   ordemSerie: { col:'d', desc:true },
   auto: null
 };
@@ -905,109 +1054,116 @@ function registrarSnapshot(valor, custo){
 /* ══════════════════════════════════════════════════════════
    7. RENDERIZAÇÃO
    ══════════════════════════════════════════════════════════ */
-const CABECALHOS = {
-  cotacoes: [
-    { col:'symbol', rot:'Ativo', lead:true },
-    { col:'price',  rot:'Cotação' },
-    { col:'c24',    rot:'24 h' },
-    { col:'c7',     rot:'7 d', sm:true },
-    { col:'c30',    rot:'30 d', sm:true },
-    { col:null,     rot:'7 dias', sm:true },
-    { col:'mc',     rot:'Capitalização', sm:true },
-    { col:null,     rot:'' }
-  ],
-  posicoes: [
-    { col:'symbol', rot:'Ativo', lead:true },
-    { col:'qtd',    rot:'Quantidade' },
-    { col:'pm',     rot:'Preço médio' },
-    { col:'valor',  rot:'Valor' },
-    { col:'custo',  rot:'Custo', sm:true },
-    { col:'res',    rot:'Resultado' },
-    { col:'doc',    rot:'Comprovação', sm:true },
-    { col:'part',   rot:'Part.', sm:true },
-    { col:null,     rot:'' }
-  ]
-};
-
-function renderRazao(){
-  const apuracao = apurar();
-  const modo = estado.modo;
-  const cabs = CABECALHOS[modo];
-  let { col, desc } = estado.ordemRazao;
-  if (!cabs.some(h => h.col === col)) col = modo === 'posicoes' ? 'valor' : 'mc';
-
-  document.getElementById('razao-cab').innerHTML = '<tr>' + cabs.map(h => {
-    const classes = [h.lead && 'lead', h.col && 'sortable', h.sm && 'hide-sm'].filter(Boolean).join(' ');
-    return `<th class="${classes}" ${h.col ? `data-col="${h.col}"` : ''}` +
-           `${h.col === col ? ` aria-sort="${desc ? 'descending' : 'ascending'}"` : ''}>${h.rot}</th>`;
-  }).join('') + '</tr>';
-
-  const linhas = [...apuracao.linhas].sort((a, b) => {
+/** Ordena uma lista pelo par {col, desc}, tratando texto e número. */
+function ordenar(linhas, ordem){
+  const { col, desc } = ordem;
+  return [...linhas].sort((a, b) => {
     const x = a[col], y = b[col];
     if (typeof x === 'string') return desc ? y.localeCompare(x) : x.localeCompare(y);
     return desc ? (y ?? -Infinity) - (x ?? -Infinity) : (x ?? Infinity) - (y ?? Infinity);
   });
+}
 
+function marcarOrdem(seletor, ordem){
+  document.querySelectorAll(seletor).forEach(th => {
+    if (th.dataset.col === ordem.col) th.setAttribute('aria-sort', ordem.desc ? 'descending' : 'ascending');
+    else th.removeAttribute('aria-sort');
+  });
+}
+
+const cellAtivo = m =>
+  `<td class="lead"><span class="sym">${m.symbol}</span><span class="name hide-sm">${m.name}</span></td>`;
+
+/** Aba Mercado: cotações de tudo que o usuário acompanha. */
+function renderMercado(){
+  const linhas = ordenar(apurar().linhas, estado.ordemRazao);
+  marcarOrdem('#razao thead th', estado.ordemRazao);
   const corpo = document.getElementById('razao-corpo');
-  const rodape = document.getElementById('razao-rodape');
 
   if (!linhas.length){
-    corpo.innerHTML = `<tr><td colspan="10" class="empty">Nenhum ativo acompanhado. Abra "Gerenciar ativos e dados" para adicionar.</td></tr>`;
-    rodape.innerHTML = '';
-    document.getElementById('razao-nota').textContent = 'Carteira vazia';
+    corpo.innerHTML = `<tr><td colspan="8" class="tabela-vazia">
+      Nenhum ativo acompanhado. Use o campo de busca abaixo.</td></tr>`;
+    document.getElementById('razao-nota').textContent = 'Lista vazia';
     return;
   }
 
-  const cellAtivo = m => `<td class="lead"><span class="sym">${m.symbol}</span><span class="name hide-sm">${m.name}</span></td>`;
-  const cellRemover = m => `<td><button class="kill" data-remove="${m.id}" aria-label="Remover ${m.symbol}">×</button></td>`;
-
-  if (modo === 'cotacoes'){
-    corpo.innerHTML = linhas.map(m => `
-      <tr data-id="${m.id}" ${m.id === estado.foco ? 'aria-current="true"' : ''}>
-        ${cellAtivo(m)}
-        <td>${dinheiro(m.price)}</td>
-        <td class="${cls(m.c24)}">${pct(m.c24)}</td>
-        <td class="hide-sm ${cls(m.c7)}">${pct(m.c7)}</td>
-        <td class="hide-sm ${cls(m.c30)}">${pct(m.c30)}</td>
-        <td class="hide-sm">${sparkline(m.spark)}</td>
-        <td class="hide-sm">${curto(m.mc)}</td>
-        ${cellRemover(m)}
-      </tr>`).join('');
-    rodape.innerHTML = '';
-  } else {
-    corpo.innerHTML = linhas.map(m => `
-      <tr data-id="${m.id}" ${m.id === estado.foco ? 'aria-current="true"' : ''}>
-        ${cellAtivo(m)}
-        <td>${m.qtd > 0 ? qtdTexto(m.qtd) : '—'}</td>
-        <td>${m.pm > 0 ? dinheiro(m.pm) : '—'}</td>
-        <td>${m.valor > 0 ? dinheiro(m.valor, 2) : '—'}</td>
-        <td class="hide-sm">${m.custo > 0 ? dinheiro(m.custo, 2) : '—'}</td>
-        <td class="${cls(m.res)}">${m.res == null ? '—' : dinheiro(m.res, 2) + `<small>${pct(m.resPct)}</small>`}</td>
-        <td class="hide-sm">${m.qtd > 0 ? `<span class="barra-doc">
-          <i style="width:${Math.round(m.doc * 40)}px"></i>${Math.round(m.doc * 100)}%</span>` : '—'}</td>
-        <td class="hide-sm"><span class="part"><i style="width:${Math.round(m.part * 0.45)}px"></i>${
-          m.part ? m.part.toFixed(1).replace('.', ',') + '%' : '—'}</span></td>
-        ${cellRemover(m)}
-      </tr>`).join('');
-
-    rodape.innerHTML = `<tr>
-      <td class="lead">Totais</td><td></td><td></td>
-      <td>${dinheiro(apuracao.valor, 2)}</td>
-      <td class="hide-sm">${apuracao.custo > 0 ? dinheiro(apuracao.custo, 2) : '—'}</td>
-      <td class="${cls(apuracao.resultado)}">${apuracao.resultado == null ? '—' : dinheiro(apuracao.resultado, 2)}</td>
-      <td class="hide-sm">${Math.round(apuracao.indiceDoc * 100)}%</td>
-      <td class="hide-sm">${apuracao.valor > 0 ? '100%' : '—'}</td><td></td></tr>`;
-  }
+  corpo.innerHTML = linhas.map(m => `
+    <tr data-id="${m.id}" ${m.id === estado.foco ? 'aria-current="true"' : ''}>
+      ${cellAtivo(m)}
+      <td>${dinheiro(m.price)}</td>
+      <td class="${cls(m.c24)}">${pct(m.c24)}</td>
+      <td class="hide-sm ${cls(m.c7)}">${pct(m.c7)}</td>
+      <td class="hide-sm ${cls(m.c30)}">${pct(m.c30)}</td>
+      <td class="hide-sm">${sparkline(m.spark)}</td>
+      <td class="hide-sm">${curto(m.mc)}</td>
+      <td><button class="kill" data-remove="${m.id}" aria-label="Remover ${m.symbol}">×</button></td>
+    </tr>`).join('');
 
   document.getElementById('razao-nota').textContent =
-    `${linhas.length} ativo${linhas.length > 1 ? 's' : ''} · clique na linha para abrir a conta analítica`;
+    `${linhas.length} ativo${linhas.length > 1 ? 's' : ''} acompanhado${linhas.length > 1 ? 's' : ''}`;
+}
 
-  const av = document.getElementById('aviso-cambio');
-  if (modo === 'posicoes' && apuracao.custo > 0 && apuracao.indiceDoc < 1){
+/** Aba Carteira: posições derivadas do livro. */
+function renderPosicoes(){
+  const a = apurar();
+  const comSaldo = a.linhas.filter(l => l.qtd > 0);
+  const linhas = ordenar(comSaldo, estado.ordemPosicoes);
+  marcarOrdem('#posicoes thead th', estado.ordemPosicoes);
+
+  const corpo = document.getElementById('posicoes-corpo');
+  const rodape = document.getElementById('posicoes-rodape');
+
+  if (!linhas.length){
+    corpo.innerHTML = `<tr><td colspan="8" class="tabela-vazia">
+      Nenhuma posição aberta. Registre uma compra em <b>+ Lançar</b>.</td></tr>`;
+    rodape.innerHTML = '';
+    document.getElementById('aviso-doc').hidden = true;
+    return;
+  }
+
+  corpo.innerHTML = linhas.map(m => `
+    <tr data-id="${m.id}" ${m.id === estado.foco ? 'aria-current="true"' : ''}>
+      ${cellAtivo(m)}
+      <td>${qtdTexto(m.qtd)}</td>
+      <td>${m.pm > 0 ? dinheiro(m.pm) : '—'}</td>
+      <td>${dinheiro(m.valor, 2)}</td>
+      <td class="hide-sm">${m.custo > 0 ? dinheiro(m.custo, 2) : '—'}</td>
+      <td class="${cls(m.res)}">${m.res == null ? '—' : dinheiro(m.res, 2) + `<small>${pct(m.resPct)}</small>`}</td>
+      <td class="hide-sm"><span class="barra-doc">
+        <i style="width:${Math.round(m.doc * 40)}px"></i>${Math.round(m.doc * 100)}%</span></td>
+      <td class="hide-sm"><span class="part">
+        <i style="width:${Math.round(m.part * 0.45)}px"></i>${m.part.toFixed(1).replace('.', ',')}%</span></td>
+    </tr>`).join('');
+
+  rodape.innerHTML = `<tr>
+    <td class="lead">Totais</td><td></td><td></td>
+    <td>${dinheiro(a.valor, 2)}</td>
+    <td class="hide-sm">${a.custo > 0 ? dinheiro(a.custo, 2) : '—'}</td>
+    <td class="${cls(a.resultado)}">${a.resultado == null ? '—' : dinheiro(a.resultado, 2)}</td>
+    <td class="hide-sm">${Math.round(a.indiceDoc * 100)}%</td>
+    <td class="hide-sm">100%</td></tr>`;
+
+  const av = document.getElementById('aviso-doc');
+  if (a.custo > 0 && a.indiceDoc < 1){
     av.hidden = false;
-    av.textContent = `${Math.round(apuracao.indiceDoc * 100)}% do custo da carteira tem comprovação documental. ` +
-      `O restante é estimativa e o resultado apurado deve ser lido como tal.`;
+    av.textContent = `${Math.round(a.indiceDoc * 100)}% do custo tem comprovação documental. ` +
+      `O restante é estimativa — leia o resultado como tal.`;
   } else av.hidden = true;
+}
+
+/** Resumo permanente na barra de comando. */
+function renderTopo(){
+  const a = apurar();
+  document.getElementById('topo-valor').textContent = a.valor > 0 ? dinheiro(a.valor, 2) : '—';
+  const delta = document.getElementById('topo-delta');
+  if (a.valor > 0 && a.g24Pct != null){
+    delta.textContent = `${dinheiro(a.g24, 2)} (${pct(a.g24Pct)}) em 24 h`;
+    delta.className = 'delta num ' + cls(a.g24);
+  } else delta.textContent = '';
+
+  const m = estado.mercado.find(x => x.id === estado.foco);
+  document.getElementById('aba-ativo').innerHTML =
+    (m ? m.symbol.toUpperCase() : 'Ativo') + '<span class="marcador">●</span>';
 }
 
 function renderPatrimonio(){
@@ -1015,8 +1171,9 @@ function renderPatrimonio(){
   const tem = a.valor > 0;
   document.getElementById('patrimonio-vazio').hidden = tem;
   document.getElementById('patrimonio-bloco').hidden = !tem;
+  const abertas = a.linhas.filter(l => l.qtd > 0).length;
   document.getElementById('patrimonio-nota').textContent = tem
-    ? `${a.linhas.filter(l => l.qtd > 0).length} posições abertas` : 'Sem posições informadas';
+    ? `${abertas} posição${abertas > 1 ? 'ões' : ''} aberta${abertas > 1 ? 's' : ''}` : 'Sem posições';
   if (!tem) return;
 
   registrarSnapshot(a.valor, a.custo);
@@ -1064,7 +1221,7 @@ function renderPatrimonio(){
 
 function renderCotacao(){
   const m = estado.mercado.find(x => x.id === estado.foco);
-  document.getElementById('foco-nome').textContent = m ? `${m.name} (${m.symbol.toUpperCase()})` : estado.foco;
+  document.getElementById('foco-nome').textContent = m ? `${m.name} · ${m.symbol.toUpperCase()}` : estado.foco;
   document.getElementById('apurado').textContent =
     new Intl.DateTimeFormat('pt-BR', { dateStyle:'short', timeStyle:'short' }).format(new Date());
   if (!m){ document.getElementById('preco').textContent = '—'; return; }
@@ -1204,9 +1361,68 @@ function renderFiscal(){
 
 function renderTudo(){
   rodarMotor();
-  renderPatrimonio(); renderRazao(); renderCotacao();
+  renderTopo();
+  renderPatrimonio(); renderPosicoes(); renderMercado(); renderCotacao();
   renderLivro(); renderFiscal(); popularSelects();
 }
+
+/* ═══ NAVEGAÇÃO POR ABAS ═══ */
+function mostrarVista(nome){
+  estado.vista = nome;
+  document.querySelectorAll('.vista').forEach(v =>
+    v.classList.toggle('ativa', v.id === 'v-' + nome));
+  document.querySelectorAll('.aba').forEach(b =>
+    b.setAttribute('aria-selected', String(b.dataset.vista === nome)));
+  // Gráficos desenhados em painel oculto medem zero — força o recálculo.
+  requestAnimationFrame(() => {
+    Object.values(grafico).forEach(g => { try { g.resize(); } catch {} });
+  });
+  window.scrollTo({ top: 0, behavior: 'auto' });
+}
+
+document.querySelectorAll('.aba').forEach(b =>
+  b.addEventListener('click', () => mostrarVista(b.dataset.vista)));
+
+/** Abrir um ativo: leva o usuário direto para onde o efeito aparece. */
+async function abrirAtivo(id){
+  const trocou = id !== estado.foco;
+  if (trocou){
+    estado.foco = id;
+    estado.comparar = [];
+    store.gravar('cfg:foco', id);
+    renderTopo(); renderPosicoes(); renderMercado(); renderCotacao(); renderComparar();
+  }
+  mostrarVista('ativo');
+  if (trocou){
+    try { await carregarFoco(); } catch (e){ erro(e.message); }
+  }
+}
+
+/* ═══ MODAL DE LANÇAMENTO ═══ */
+const modal = document.getElementById('modal');
+
+function abrirModal(ativoSugerido){
+  if (!estado.lista.length) return erro('Adicione ao menos um ativo em Mercado antes de lançar.');
+  popularSelects();
+  if (ativoSugerido) document.getElementById('f-ativo').value = ativoSugerido;
+  if (!document.getElementById('f-data').value)
+    document.getElementById('f-data').value = new Date().toISOString().slice(0,10);
+  modal.classList.add('aberto');
+  ajustarFormulario();
+  previewLancamento();
+  document.getElementById('f-qtd').focus();
+}
+
+function fecharModal(){ modal.classList.remove('aberto'); }
+
+document.getElementById('abrir-lancamento').addEventListener('click', () => abrirModal(estado.foco));
+document.getElementById('abrir-lancamento-2').addEventListener('click', () => abrirModal(estado.foco));
+document.getElementById('fechar-modal').addEventListener('click', fecharModal);
+document.getElementById('f-cancelar').addEventListener('click', fecharModal);
+modal.addEventListener('click', ev => { if (ev.target === modal) fecharModal(); });
+document.addEventListener('keydown', ev => {
+  if (ev.key === 'Escape' && modal.classList.contains('aberto')) fecharModal();
+});
 
 /* ══════════════════════════════════════════════════════════
    8. CARGA DE DADOS
@@ -1294,7 +1510,7 @@ async function desenharAno(){
 /* ══════════════════════════════════════════════════════════
    9. INTERAÇÕES
    ══════════════════════════════════════════════════════════ */
-// foco e remoção
+// clique nas tabelas: abre o ativo ou remove da lista
 document.getElementById('razao-corpo').addEventListener('click', async ev => {
   const rem = ev.target.closest('[data-remove]');
   if (rem){
@@ -1314,42 +1530,29 @@ document.getElementById('razao-corpo').addEventListener('click', async ev => {
     return;
   }
   const linha = ev.target.closest('tr[data-id]');
-  if (!linha || linha.dataset.id === estado.foco) return;
-  estado.foco = linha.dataset.id;
-  estado.comparar = [];
-  store.gravar('cfg:foco', estado.foco);
-  renderRazao(); renderCotacao(); renderComparar();
-  try { await carregarFoco(); } catch (e){ erro(e.message); }
+  if (linha) abrirAtivo(linha.dataset.id);
 });
 
-// ordenação
-document.getElementById('razao-cab').addEventListener('click', ev => {
-  const th = ev.target.closest('th.sortable');
-  if (!th) return;
-  const o = estado.ordemRazao;
-  estado.ordemRazao = { col:th.dataset.col, desc: o.col === th.dataset.col ? !o.desc : true };
-  renderRazao();
-});
-document.querySelectorAll('.last thead th.sortable').forEach(th => {
-  th.addEventListener('click', () => {
-    const o = estado.ordemSerie;
-    estado.ordemSerie = { col:th.dataset.col, desc: o.col === th.dataset.col ? !o.desc : true };
-    document.querySelectorAll('.last thead th').forEach(x => x.removeAttribute('aria-sort'));
-    th.setAttribute('aria-sort', estado.ordemSerie.desc ? 'descending' : 'ascending');
-    renderSerie();
-  });
+document.getElementById('posicoes-corpo').addEventListener('click', ev => {
+  const linha = ev.target.closest('tr[data-id]');
+  if (linha) abrirAtivo(linha.dataset.id);
 });
 
-// modo da razão
-document.querySelectorAll('[data-modo]').forEach(chip => {
-  chip.addEventListener('click', () => {
-    estado.modo = chip.dataset.modo;
-    estado.ordemRazao = { col: estado.modo === 'posicoes' ? 'valor' : 'mc', desc:true };
-    store.gravar('cfg:modo', estado.modo);
-    document.querySelectorAll('[data-modo]').forEach(c => c.removeAttribute('aria-pressed'));
-    chip.setAttribute('aria-pressed', 'true');
-    renderRazao();
+// ordenação das três tabelas
+function ligarOrdenacao(seletor, chave, redesenhar){
+  document.querySelector(seletor).addEventListener('click', ev => {
+    const th = ev.target.closest('th.sortable');
+    if (!th) return;
+    const o = estado[chave];
+    estado[chave] = { col:th.dataset.col, desc: o.col === th.dataset.col ? !o.desc : true };
+    redesenhar();
   });
+}
+ligarOrdenacao('#razao thead', 'ordemRazao', renderMercado);
+ligarOrdenacao('#posicoes thead', 'ordemPosicoes', renderPosicoes);
+ligarOrdenacao('.vista#v-ativo thead', 'ordemSerie', () => {
+  marcarOrdem('.vista#v-ativo thead th', estado.ordemSerie);
+  renderSerie();
 });
 
 // moeda de referência
@@ -1599,6 +1802,8 @@ document.getElementById('f-gravar').addEventListener('click', () => {
   ['f-qtd','f-qtd2','f-preco','f-taxa'].forEach(id => document.getElementById(id).value = '');
   previewLancamento();
   renderTudo();
+  fecharModal();
+  if (estado.vista !== 'livro') mostrarVista('carteira');
   toast(permuta ? 'Permuta lançada em duas pernas.' : 'Lançamento registrado.');
 });
 
@@ -1670,16 +1875,14 @@ document.getElementById('arquivo').addEventListener('change', async ev => {
   ev.target.value = '';
 });
 
-// copiar tabela em TSV
+// copiar cotações em TSV, colável direto na planilha
 document.getElementById('copiar').addEventListener('click', async () => {
-  const linhas = [...apurar().linhas].sort((a, b) => a.symbol.localeCompare(b.symbol));
-  const n = v => typeof v === 'number' && isFinite(v) ? v.toLocaleString('pt-BR', { maximumFractionDigits:8 }) : '';
-  const texto = estado.modo === 'posicoes'
-    ? 'Ativo\tQuantidade\tPreço médio\tCotação\tValor\tResultado\n' +
-      linhas.map(l => [l.symbol.toUpperCase(), n(l.qtd), n(l.pm), n(l.price), n(l.valor), n(l.res)].join('\t')).join('\n')
-    : linhas.map(l => `${l.symbol.toUpperCase()}\t${
-        l.price?.toLocaleString('pt-BR', { minimumFractionDigits:4, maximumFractionDigits:4 }) ?? ''}`).join('\n');
-  try { await navigator.clipboard.writeText(texto); toast('Tabela copiada para a área de transferência.'); }
+  const texto = [...estado.mercado]
+    .sort((a, b) => a.symbol.localeCompare(b.symbol))
+    .map(m => `${m.symbol.toUpperCase()}\t${
+      m.price?.toLocaleString('pt-BR', { minimumFractionDigits:4, maximumFractionDigits:4 }) ?? ''}`)
+    .join('\n');
+  try { await navigator.clipboard.writeText(texto); toast('Cotações copiadas.'); }
   catch { erro('O navegador bloqueou a cópia. Selecione a tabela manualmente.'); }
 });
 
@@ -1757,9 +1960,6 @@ function migrarPosicoesAntigas(){
   document.getElementById('de').value = new Date(Date.now() - 30*864e5).toISOString().slice(0,10);
   document.querySelectorAll('[data-moeda]').forEach(c =>
     c.dataset.moeda === estado.moeda ? c.setAttribute('aria-pressed','true') : c.removeAttribute('aria-pressed'));
-  document.querySelectorAll('[data-modo]').forEach(c =>
-    c.dataset.modo === estado.modo ? c.setAttribute('aria-pressed','true') : c.removeAttribute('aria-pressed'));
-  estado.ordemRazao = { col: estado.modo === 'posicoes' ? 'valor' : 'mc', desc:true };
   sincronizarTextarea();
 
   document.getElementById('f-data').value = hoje.toISOString().slice(0,10);
