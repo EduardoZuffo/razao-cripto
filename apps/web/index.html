@@ -316,6 +316,66 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
 }
 .fechar:hover{color:var(--ink)}
 
+/* ═══ ajuda ═══ */
+.interrogacao{
+  width:30px;height:30px;flex:0 0 auto;border:1.5px solid var(--ink);
+  background:transparent;color:var(--ink);font-family:'IBM Plex Mono',monospace;
+  font-size:15px;font-weight:600;line-height:1;cursor:pointer;border-radius:50%;
+}
+.interrogacao:hover{background:var(--ink);color:var(--paper)}
+
+.dialogo.largo{max-width:880px;max-height:86vh;display:flex;flex-direction:column}
+.ajuda-abas{
+  display:flex;gap:0;overflow-x:auto;border-bottom:1px solid var(--rule);
+  margin-bottom:16px;flex:0 0 auto;scrollbar-width:none;
+}
+.ajuda-abas::-webkit-scrollbar{display:none}
+.ajuda-aba{
+  font-family:'IBM Plex Sans Condensed',sans-serif;font-size:11.5px;font-weight:600;
+  letter-spacing:.12em;text-transform:uppercase;color:var(--muted);
+  background:transparent;border:0;border-bottom:3px solid transparent;
+  padding:8px 13px;cursor:pointer;white-space:nowrap;margin-bottom:-1px;
+}
+.ajuda-aba:hover{color:var(--ink)}
+.ajuda-aba[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--stamp)}
+
+.ajuda-corpo{overflow-y:auto;flex:1 1 auto;padding-right:4px}
+.ajuda-secao{display:none}
+.ajuda-secao.ativa{display:block}
+.ajuda-corpo h3{
+  font-size:13px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;
+  margin:20px 0 8px;
+}
+.ajuda-corpo h3:first-child{margin-top:0}
+.ajuda-corpo p{font-size:14px;margin-bottom:10px}
+.ajuda-corpo ul,.ajuda-corpo ol{margin:0 0 12px 20px;font-size:14px}
+.ajuda-corpo li{margin-bottom:5px}
+.ajuda-corpo table{margin-bottom:14px;border-top:2px solid var(--ink)}
+.ajuda-corpo th{
+  font-family:'IBM Plex Sans Condensed',sans-serif;font-size:11px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--muted);text-align:left;padding:7px 10px 7px 0;
+  border-bottom:1px solid var(--rule);white-space:normal;
+}
+.ajuda-corpo td{
+  font-size:13.5px;text-align:left;padding:6px 10px 6px 0;
+  vertical-align:top;white-space:normal;
+}
+.ajuda-corpo tr:nth-child(even){background:var(--bar)}
+.destaque-caixa{
+  border-left:3px solid var(--stamp);background:var(--bar);
+  padding:11px 14px;margin:12px 0;font-size:13.5px;
+}
+.destaque-caixa b{display:block;margin-bottom:3px}
+.ajuda-rodape{
+  flex:0 0 auto;border-top:1px solid var(--rule);margin-top:14px;padding-top:12px;
+  font-family:'IBM Plex Sans Condensed',sans-serif;font-size:12px;color:var(--muted);
+}
+.link-ajuda{
+  background:transparent;border:0;padding:0;cursor:pointer;color:var(--stamp);
+  font-family:'IBM Plex Sans Condensed',sans-serif;font-size:12px;font-weight:600;
+  text-decoration:underline;
+}
+
 /* ═══ trilho de troca de ativo ═══ */
 .trilho{
   display:flex;gap:0;overflow-x:auto;border-bottom:1px solid var(--rule);
@@ -386,6 +446,7 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
           <button class="chip" data-moeda="brl">BRL</button>
         </span>
         <button class="solid" id="abrir-lancamento">+ Lançar</button>
+        <button class="interrogacao" id="abrir-ajuda" title="Como funciona" aria-label="Ajuda">?</button>
       </div>
     </div>
 
@@ -698,7 +759,10 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
 
   <footer>
     <span id="atribuicao">—</span>
-    <span>Apurado em <b id="apurado">—</b> · folha <b id="folio">—</b></span>
+    <span>
+      <button class="link-ajuda" id="ajuda-rodape">Como funciona</button>
+      · apurado em <b id="apurado">—</b> · folha <b id="folio">—</b>
+    </span>
   </footer>
 </main>
 
@@ -784,12 +848,235 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
     </div>
 
     <p class="aviso" id="f-dica" style="margin-top:0"></p>
+    <p style="margin-top:2px">
+      <button class="link-ajuda" id="link-operacoes">Não sei qual opção usar</button>
+    </p>
     <p class="aviso" id="f-preview"></p>
 
     <div class="toolbar" style="margin:16px 0 0">
       <button class="solid" id="f-gravar">Lançar</button>
       <button class="ghost" id="f-cancelar">Cancelar</button>
     </div>
+  </div>
+</div>
+
+<!-- ═══ AJUDA ═══ -->
+<div class="fundo" id="ajuda" role="dialog" aria-modal="true" aria-labelledby="ajuda-titulo">
+  <div class="dialogo largo">
+    <div class="dialogo-topo">
+      <h2 id="ajuda-titulo">Como funciona</h2>
+      <button class="fechar" id="fechar-ajuda" aria-label="Fechar">×</button>
+    </div>
+
+    <div class="ajuda-abas" role="tablist">
+      <button class="ajuda-aba" data-secao="ideia" role="tab" aria-selected="true">A ideia</button>
+      <button class="ajuda-aba" data-secao="comecar" role="tab" aria-selected="false">Já tenho cripto</button>
+      <button class="ajuda-aba" data-secao="operacoes" role="tab" aria-selected="false">Qual opção usar</button>
+      <button class="ajuda-aba" data-secao="telas" role="tab" aria-selected="false">As abas</button>
+      <button class="ajuda-aba" data-secao="imposto" role="tab" aria-selected="false">O imposto</button>
+      <button class="ajuda-aba" data-secao="dados" role="tab" aria-selected="false">Seus dados</button>
+    </div>
+
+    <div class="ajuda-corpo">
+
+      <div class="ajuda-secao ativa" id="ajuda-ideia">
+        <h3>Você registra fatos, o sistema calcula consequências</h3>
+        <p>Você <b>não</b> digita "tenho 0,9 BTC com preço médio de R$ 197.500". Você registra as
+        compras e as vendas que aconteceram, e o saldo, o preço médio e o resultado aparecem sozinhos.</p>
+        <p>Parece mais trabalhoso, mas é o contrário: você nunca refaz conta ao comprar de novo,
+        o preço médio nunca fica errado por digitação, e como o sistema sabe <i>quando</i> cada coisa
+        aconteceu, ele consegue apurar imposto por mês e por ano.</p>
+        <h3>O que ele não é</h3>
+        <ul>
+          <li><b>Não é corretora.</b> Não compra, não vende, não guarda cripto. Só registra.</li>
+          <li><b>Não é conselho de investimento.</b> Não sugere o que comprar nem prevê preço.</li>
+          <li><b>Não é apuração fiscal oficial.</b> A aba Imposto produz simulação. Antes de declarar
+          ou pagar, leve os números a um contador.</li>
+          <li><b>Não substitui seus comprovantes.</b> Guarde os extratos.</li>
+        </ul>
+      </div>
+
+      <div class="ajuda-secao" id="ajuda-comecar">
+        <h3>Sim, lance como compra, na data real</h3>
+        <p>A pergunta é quanta informação você tem.</p>
+
+        <h3>Caminho A — você tem o histórico</h3>
+        <p>Baixe o extrato da corretora e lance cada compra na data que aconteceu, marcando
+        <b>Tenho extrato</b>. Dá trabalho uma vez e depois está certo para sempre.</p>
+
+        <h3>Caminho B — não tem, ou não vale o esforço</h3>
+        <p>Um único lançamento por ativo, representando tudo que você tem hoje daquele ativo.</p>
+        <table>
+          <tr><th>Campo</th><th>O que preencher</th></tr>
+          <tr><td>Quantidade</td><td>O saldo atual, não o que comprou lá atrás</td></tr>
+          <tr><td>Preço unitário</td><td>O custo médio que você estima ter pagado</td></tr>
+          <tr><td>Data</td><td>A data aproximada, ou qualquer data anterior à primeira venda que for registrar</td></tr>
+          <tr><td>Comprovação</td><td><i>Valor de memória</i> se lembra mais ou menos, <i>Não sei o custo</i> se não faz ideia</td></tr>
+        </table>
+
+        <div class="destaque-caixa">
+          <b>O erro mais comum</b>
+          Lançar a quantidade que tem com o preço de hoje. Isso diz ao sistema que você pagou o preço
+          atual, e o resultado fica zerado para sempre. Se não faz ideia do custo, marque
+          <i>Não sei o custo</i> com preço zero — fiscalmente é conservador, o ganho apurado fica
+          máximo e você pagaria mais imposto, nunca menos.
+        </div>
+
+        <h3>Por que a data importa</h3>
+        <p>O custo médio é calculado na ordem cronológica. Se você registrar uma venda de 2024 sem ter
+        lançado a compra antes dela, o sistema recusa com "saldo insuficiente" — não dá para vender o
+        que ainda não entrou no livro. <b>O lançamento de abertura precisa ter data anterior a qualquer
+        venda que você registrar.</b></p>
+
+        <h3>A escada de reconstrução</h3>
+        <ol>
+          <li><b>Extrato da corretora.</b> Quase todo mundo pode recuperar e não sabe.</li>
+          <li><b>Sua declaração de IR do ano passado.</b> Se você declarou cripto em Bens e Direitos,
+          aquele valor <b>é</b> seu custo de aquisição oficial.</li>
+          <li><b>Reconstrução pela data.</b> Procure a cotação do dia aproximado.</li>
+          <li><b>Valor de memória.</b> "Foi por volta de trinta mil."</li>
+          <li><b>Custo desconhecido.</b> Preço zero.</li>
+        </ol>
+      </div>
+
+      <div class="ajuda-secao" id="ajuda-operacoes">
+        <h3>A pergunta certa é "o que aconteceu comigo"</h3>
+        <table>
+          <tr><th>O que aconteceu</th><th>O que lançar</th></tr>
+          <tr><td>Paguei em real ou dólar e recebi cripto</td><td><b>Compra</b></td></tr>
+          <tr><td>Vendi cripto e recebi dinheiro</td><td><b>Venda</b></td></tr>
+          <tr><td>Troquei uma cripto por outra</td><td><b>Permuta</b></td></tr>
+          <tr><td>Ganhei cripto de staking, juros ou cashback</td><td><b>Rendimento</b></td></tr>
+          <tr><td>Recebi cripto de graça numa distribuição</td><td><b>Airdrop</b></td></tr>
+          <tr><td>Movi entre carteiras minhas</td><td><b>Transferência</b> enviada e recebida</td></tr>
+          <tr><td>Paguei taxa de rede na própria moeda</td><td><b>Taxa paga no ativo</b></td></tr>
+          <tr><td>Perdi a chave, ou a corretora quebrou</td><td><b>Perda definitiva</b></td></tr>
+        </table>
+
+        <h3>Três detalhes que evitam erro</h3>
+        <div class="destaque-caixa">
+          <b>Permuta gera imposto</b>
+          Trocar ETH por SOL realiza o lucro do ETH. É a operação que mais gente lança errado.
+          Você informa o que entregou, o que recebeu e o valor total da troca em reais — o sistema
+          cria os dois lados sozinho, amarrados. Apagar um apaga o outro.
+        </div>
+        <div class="destaque-caixa">
+          <b>Transferência não altera nada</b>
+          Nem saldo, nem custo, nem imposto. Serve só para o histórico ficar completo.
+          Não use para envio a terceiros.
+        </div>
+        <div class="destaque-caixa">
+          <b>Rendimento e airdrop entram pelo valor do dia</b>
+          Esse valor vira o custo de aquisição daquelas moedas. Quando você vender, o lucro conta
+          a partir dali, não a partir de zero.
+        </div>
+
+        <h3>Taxas</h3>
+        <p>Na compra, a taxa <b>entra no custo</b> — faz parte do que você pagou pelo bem.
+        Na venda, ela é <b>descontada</b> do que você recebeu.</p>
+
+        <h3>Operações em dólar</h3>
+        <p>Preencha o <b>câmbio da data</b>, não o de hoje. Comprou a US$ 20.000 com dólar a R$ 5,00
+        e vendeu a US$ 25.000 com dólar a R$ 6,00? O custo foi R$ 100.000 e a venda R$ 150.000 — o
+        ganho de R$ 50.000 inclui a valorização do dólar, e ela é tributável. A fonte oficial para o
+        fisco é a PTAX do Banco Central.</p>
+      </div>
+
+      <div class="ajuda-secao" id="ajuda-telas">
+        <h3>Barra do topo</h3>
+        <p>Sempre visível: patrimônio, variação de 24 h, moeda de referência e o botão
+        <b>+ Lançar</b>, que abre o formulário de qualquer aba.</p>
+        <table>
+          <tr><th>Aba</th><th>Responde</th></tr>
+          <tr><td><b>Carteira</b></td><td>Onde estou? Patrimônio, composição, evolução e posições</td></tr>
+          <tr><td><b>Mercado</b></td><td>O que está acontecendo? Cotações e gestão da lista de ativos</td></tr>
+          <tr><td><b>Símbolo do ativo</b></td><td>Como esse ativo se comporta? Gráficos e série histórica</td></tr>
+          <tr><td><b>Livro</b></td><td>O que eu fiz? Todos os lançamentos</td></tr>
+          <tr><td><b>Imposto</b></td><td>Quanto eu devo? As duas apurações</td></tr>
+        </table>
+        <p>Clique em qualquer linha nas abas Carteira ou Mercado para abrir a análise daquele ativo.
+        Lá dentro, o trilho no topo troca de ativo sem sair da tela, e as setas
+        <b>←</b> <b>→</b> do teclado percorrem a lista.</p>
+
+        <h3>A coluna Comprovação</h3>
+        <p>Mostra quanto do custo daquele ativo tem extrato ou nota por trás. Se aparecer 38%,
+        significa que 62% é estimativa. O sistema mede a própria incerteza em vez de escondê-la.</p>
+
+        <h3>Números com ponto e vírgula</h3>
+        <p>O formulário mostra embaixo como interpretou o que você digitou, antes de gravar.
+        A regra: o último separador é o decimal, e ponto isolado com três casas é milhar —
+        <b>180.000</b> é cento e oitenta mil, mas <b>0.001</b> é um milésimo.</p>
+      </div>
+
+      <div class="ajuda-secao" id="ajuda-imposto">
+        <div class="destaque-caixa">
+          <b>Isto é simulação</b>
+          Os números dependem inteiramente de os lançamentos estarem certos e completos, e da
+          interpretação da legislação vigente. Não constitui apuração fiscal nem orientação
+          tributária. Confira com contador antes de declarar ou recolher qualquer tributo.
+        </div>
+
+        <h3>Só duas operações geram imposto</h3>
+        <p><b>Venda</b> e <b>permuta de saída</b>. Compra, transferência, rendimento e airdrop não
+        geram imposto no momento em que acontecem.</p>
+        <p>Para cada uma, o sistema calcula três números: quanto foi recebido, quanto daquilo era
+        custo, e a diferença.</p>
+
+        <h3>Os dois regimes</h3>
+        <table>
+          <tr><th></th><th>Nacional</th><th>Exterior</th></tr>
+          <tr><td>Período</td><td>Mês</td><td>Ano</td></tr>
+          <tr><td>Isenção por volume</td><td>Sim, se o total de alienações do mês ficar abaixo do limite</td><td>Não</td></tr>
+          <tr><td>Alíquota</td><td>Tabela progressiva</td><td>Fixa</td></tr>
+          <tr><td>Prejuízo abate lucro</td><td>Não, por padrão</td><td>Sim, dentro do ano</td></tr>
+        </table>
+        <p>O regime vem <b>do lançamento</b>, não do ativo. O mesmo Bitcoin pode gerar uma venda
+        nacional e uma no exterior no mesmo mês, e cada uma vai para sua tabela.</p>
+
+        <h3>Sobre prejuízos</h3>
+        <p>O padrão é a leitura conservadora, operação a operação, sem abater prejuízo do lucro no
+        regime nacional. A tela mostra <b>Ganho bruto</b> e <b>Resultado líquido</b> lado a lado
+        justamente para o contador decidir qual usar.</p>
+
+        <h3>Quando as regras mudam</h3>
+        <p>Os limites e alíquotas ficam num único objeto de parâmetros no código, separados do
+        algoritmo. Quando a lei muda, altera-se os números, não a lógica. Vale revisar uma vez por
+        ano e acompanhar as publicações da Receita Federal sobre ativos digitais.</p>
+      </div>
+
+      <div class="ajuda-secao" id="ajuda-dados">
+        <h3>Tudo fica no seu navegador</h3>
+        <p>Nada vai para servidor nenhum. Os únicos dados que saem do seu computador são consultas
+        de preço, que não incluem nada sobre você.</p>
+        <p>Isso tem duas faces, e vale entender que são coisas diferentes:</p>
+        <ul>
+          <li><b>Privacidade: máxima.</b> Nada seu está armazenado em lugar nenhum além da sua máquina.</li>
+          <li><b>Segurança dos dados: baixa.</b> Não há backup automático nem recuperação.
+          Limpou o navegador, perdeu.</li>
+        </ul>
+
+        <div class="destaque-caixa">
+          <b>Exporte sua carteira com frequência</b>
+          Em <b>Carteira → Cópia de segurança</b>. É um arquivo pequeno com sua lista de ativos,
+          seus lançamentos e o histórico de patrimônio. É a única forma de recuperar seus dados
+          e de levá-los para outro aparelho.
+        </div>
+
+        <h3>Perguntas frequentes</h3>
+        <p><b>Apaguei um lançamento por engano.</b> Não há desfazer. Lance de novo.</p>
+        <p><b>Quero remover um ativo mas o sistema não deixa.</b> Ele tem lançamentos no livro. Se
+        sumisse da lista, a posição continuaria sendo calculada mas não apareceria em lugar nenhum.
+        Apague os lançamentos primeiro.</p>
+        <p><b>Vendi mais do que tenho e o sistema recusou.</b> Falta registrar alguma aquisição
+        anterior. Lance a compra que está faltando.</p>
+      </div>
+
+    </div>
+
+    <p class="ajuda-rodape">
+      Este sistema produz simulações a partir do que você registra. Não é apuração fiscal oficial
+      nem recomendação de investimento.
+    </p>
   </div>
 </div>
 
@@ -1531,6 +1818,30 @@ async function abrirAtivo(id){
   }
 }
 
+/* ═══ AJUDA ═══ */
+const ajuda = document.getElementById('ajuda');
+
+function abrirAjuda(secao = 'ideia'){
+  document.querySelectorAll('.ajuda-secao').forEach(s =>
+    s.classList.toggle('ativa', s.id === 'ajuda-' + secao));
+  document.querySelectorAll('.ajuda-aba').forEach(b =>
+    b.setAttribute('aria-selected', String(b.dataset.secao === secao)));
+  ajuda.querySelector('.ajuda-corpo').scrollTop = 0;
+  ajuda.classList.add('aberto');
+}
+
+function fecharAjuda(){ ajuda.classList.remove('aberto'); }
+
+document.getElementById('abrir-ajuda').addEventListener('click', () => abrirAjuda());
+document.getElementById('fechar-ajuda').addEventListener('click', fecharAjuda);
+ajuda.addEventListener('click', ev => { if (ev.target === ajuda) fecharAjuda(); });
+document.querySelectorAll('.ajuda-aba').forEach(b =>
+  b.addEventListener('click', () => abrirAjuda(b.dataset.secao)));
+
+// atalho de dentro do formulário: abre direto na seção das operações
+document.getElementById('link-operacoes').addEventListener('click', () => abrirAjuda('operacoes'));
+document.getElementById('ajuda-rodape').addEventListener('click', () => abrirAjuda());
+
 /* ═══ MODAL DE LANÇAMENTO ═══ */
 const modal = document.getElementById('modal');
 
@@ -1554,7 +1865,10 @@ document.getElementById('fechar-modal').addEventListener('click', fecharModal);
 document.getElementById('f-cancelar').addEventListener('click', fecharModal);
 modal.addEventListener('click', ev => { if (ev.target === modal) fecharModal(); });
 document.addEventListener('keydown', ev => {
-  if (ev.key === 'Escape' && modal.classList.contains('aberto')) fecharModal();
+  if (ev.key !== 'Escape') return;
+  // A ajuda pode estar por cima do formulário — fecha a de cima primeiro.
+  if (ajuda.classList.contains('aberto')) fecharAjuda();
+  else if (modal.classList.contains('aberto')) fecharModal();
 });
 
 /* ══════════════════════════════════════════════════════════
@@ -1657,7 +1971,7 @@ document.getElementById('trilho').addEventListener('click', ev => {
 document.addEventListener('keydown', ev => {
   if (estado.vista !== 'ativo') return;
   if (ev.key !== 'ArrowLeft' && ev.key !== 'ArrowRight') return;
-  if (modal.classList.contains('aberto')) return;
+  if (modal.classList.contains('aberto') || ajuda.classList.contains('aberto')) return;
   const campo = ev.target.tagName;
   if (campo === 'INPUT' || campo === 'SELECT' || campo === 'TEXTAREA') return;
 
