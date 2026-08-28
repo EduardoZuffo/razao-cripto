@@ -1,0 +1,40 @@
+name: publicar
+
+# Publica o conteúdo de apps/web na raiz do GitHub Pages.
+# Sem isto, o Pages serve a raiz do repositório e o site abriria em
+# /razao-cripto/apps/web/ em vez de /razao-cripto/.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Uma publicação por vez; se houver duas seguidas, a mais nova vence.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  publicar:
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/configure-pages@v5
+
+      # Só a pasta do app vai para o ar. O motor, os testes e o schema
+      # ficam no repositório, mas não são publicados.
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: apps/web
+
+      - id: deploy
+        uses: actions/deploy-pages@v4
