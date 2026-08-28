@@ -731,16 +731,16 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
         <button class="solid" id="abrir-lancamento-2">+ Novo lançamento</button>
       </div>
       <div class="table-wrap">
-        <table>
+        <table id="livro">
           <thead>
             <tr>
-              <th class="lead">Data</th>
-              <th class="lead">Operação</th>
-              <th class="lead">Ativo</th>
-              <th>Quantidade</th>
-              <th class="hide-sm">Preço</th>
-              <th class="hide-sm">Regime</th>
-              <th class="hide-sm">Comprovação</th>
+              <th class="lead sortable" data-col="data" aria-sort="descending">Data</th>
+              <th class="lead sortable" data-col="operacao">Operação</th>
+              <th class="lead sortable" data-col="ativo">Ativo</th>
+              <th class="sortable" data-col="qtd">Quantidade</th>
+              <th class="sortable hide-sm" data-col="precoBrl">Preço</th>
+              <th class="sortable hide-sm" data-col="regime">Regime</th>
+              <th class="sortable hide-sm" data-col="nivel">Comprovação</th>
               <th></th>
             </tr>
           </thead>
@@ -764,15 +764,15 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
       <div style="margin-top:22px">
         <p class="eyebrow">Regime nacional — apuração mensal</p>
         <div class="table-wrap" style="margin-top:8px">
-          <table>
+          <table id="tab-nacional">
             <thead>
               <tr>
-                <th class="lead">Competência</th>
-                <th>Alienações</th>
-                <th class="hide-sm">Ganho bruto</th>
-                <th class="hide-sm">Resultado líquido</th>
-                <th>Base</th>
-                <th>Imposto</th>
+                <th class="lead sortable" data-col="competencia" aria-sort="descending">Competência</th>
+                <th class="sortable" data-col="total">Alienações</th>
+                <th class="sortable hide-sm" data-col="ganho">Ganho bruto</th>
+                <th class="sortable hide-sm" data-col="liquido">Resultado líquido</th>
+                <th class="sortable" data-col="base">Base</th>
+                <th class="sortable" data-col="imposto">Imposto</th>
               </tr>
             </thead>
             <tbody id="fiscal-nacional"></tbody>
@@ -783,14 +783,14 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
       <div style="margin-top:26px">
         <p class="eyebrow">Regime exterior — apuração anual</p>
         <div class="table-wrap" style="margin-top:8px">
-          <table>
+          <table id="tab-exterior">
             <thead>
               <tr>
-                <th class="lead">Ano</th>
-                <th>Alienações</th>
-                <th class="hide-sm">Resultado líquido</th>
-                <th>Base</th>
-                <th>Imposto</th>
+                <th class="lead sortable" data-col="ano" aria-sort="descending">Ano</th>
+                <th class="sortable" data-col="total">Alienações</th>
+                <th class="sortable hide-sm" data-col="liquido">Resultado líquido</th>
+                <th class="sortable" data-col="base">Base</th>
+                <th class="sortable" data-col="imposto">Imposto</th>
               </tr>
             </thead>
             <tbody id="fiscal-exterior"></tbody>
@@ -1345,6 +1345,9 @@ const estado = {
   ultimoBackup: store.ler('cfg:ultimoBackup', null),
   ordemRazao: { col:'mc', desc:true },
   ordemPosicoes: { col:'valor', desc:true },
+  ordemLivro: { col:'data', desc:true },
+  ordemFiscalNac: { col:'competencia', desc:true },
+  ordemFiscalExt: { col:'ano', desc:true },
   ordemSerie: { col:'d', desc:true },
   auto: null
 };
@@ -1574,8 +1577,16 @@ function ordenar(linhas, ordem){
   const { col, desc } = ordem;
   return [...linhas].sort((a, b) => {
     const x = a[col], y = b[col];
-    if (typeof x === 'string') return desc ? y.localeCompare(x) : x.localeCompare(y);
-    return desc ? (y ?? -Infinity) - (x ?? -Infinity) : (x ?? Infinity) - (y ?? Infinity);
+    // Célula vazia não compete por posição: fica sempre no fim.
+    const vazioX = x == null || x === '', vazioY = y == null || y === '';
+    if (vazioX && vazioY) return 0;
+    if (vazioX) return 1;
+    if (vazioY) return -1;
+    if (typeof x === 'string' || typeof y === 'string'){
+      const r = String(x).localeCompare(String(y), 'pt-BR');
+      return desc ? -r : r;
+    }
+    return desc ? y - x : x - y;
   });
 }
 
@@ -1827,32 +1838,56 @@ const reais = v => (v == null || !isFinite(num(v))) ? '—' :
 
 const simboloDe = id => (estado.mercado.find(m => m.id === id)?.symbol || id).toUpperCase();
 
+/** Comprovação ordena por qualidade da prova, não por ordem alfabética. */
+const NIVEL_CONF = { documentado:3, estimado:2, arbitrado:1, ausente:0 };
+const SEM_PRECO = ['transferencia_entrada','transferencia_saida','perda','taxa'];
+
 function renderLivro(){
   const corpo = document.getElementById('livro-corpo');
   const nota = document.getElementById('livro-nota');
 
   if (!estado.lancamentos.length){
-    corpo.innerHTML = `<tr><td colspan="8" class="empty">
-      Nenhum lançamento registrado. Use "Novo lançamento" para começar o livro.</td></tr>`;
+    corpo.innerHTML = `<tr><td colspan="8" class="tabela-vazia">
+      Nenhum lançamento registrado. Use <b>+ Lançar</b> para começar o livro.</td></tr>`;
     nota.textContent = 'Livro vazio';
     return;
   }
 
-  const ordenados = [...estado.lancamentos].sort((a, b) => b.ocorridoEm.localeCompare(a.ocorridoEm));
-  corpo.innerHTML = ordenados.map(l => {
+  // Campos derivados servem à ordenação; o que aparece na tela vem depois.
+  const linhas = estado.lancamentos.map(l => {
+    const semPreco = SEM_PRECO.includes(l.tipo);
+    const preco = semPreco ? null : Number(l.precoUnitario);
+    return {
+      ...l,
+      data: l.ocorridoEm,
+      operacao: ROTULO_TIPO[l.tipo] || l.tipo,
+      ativo: simboloDe(l.ativoId),
+      qtd: Number(l.quantidade),
+      semPreco,
+      preco,
+      // Ordena pelo equivalente em reais para que dólar e real fiquem comparáveis.
+      precoBrl: preco == null ? null
+        : preco * (l.moeda === 'BRL' ? 1 : Number(l.cambioBrl || 0)),
+      regime: l.regime === 'exterior' ? 'Exterior' : 'Nacional',
+      nivel: semPreco ? null : (NIVEL_CONF[l.confianca] ?? 0)
+    };
+  });
+
+  marcarOrdem('#livro thead th', estado.ordemLivro);
+
+  corpo.innerHTML = ordenar(linhas, estado.ordemLivro).map(l => {
     const [classe, rot] = ROTULO_CONF[l.confianca] || ['', l.confianca];
-    const semPreco = ['transferencia_entrada','transferencia_saida','perda','taxa'].includes(l.tipo);
-    const preco = semPreco ? '—'
+    const preco = l.semPreco ? '—'
       : (l.moeda === 'BRL' ? 'R$ ' : 'US$ ') +
-        Number(l.precoUnitario).toLocaleString('pt-BR', { maximumFractionDigits:8 });
+        l.preco.toLocaleString('pt-BR', { maximumFractionDigits:8 });
     return `<tr>
       <td class="lead">${fmtDia.format(new Date(l.ocorridoEm))}</td>
-      <td class="lead">${ROTULO_TIPO[l.tipo] || l.tipo}</td>
-      <td class="lead"><span class="sym">${simboloDe(l.ativoId)}</span></td>
-      <td>${Number(l.quantidade).toLocaleString('pt-BR', { maximumFractionDigits:8 })}</td>
+      <td class="lead">${l.operacao}</td>
+      <td class="lead"><span class="sym">${l.ativo}</span></td>
+      <td>${l.qtd.toLocaleString('pt-BR', { maximumFractionDigits:8 })}</td>
       <td class="hide-sm">${preco}</td>
-      <td class="hide-sm">${l.regime === 'exterior' ? 'Exterior' : 'Nacional'}</td>
-      <td class="hide-sm">${semPreco ? '—' : `<span class="tag ${classe}">${rot}</span>`}</td>
+      <td class="hide-sm">${l.regime}</td>
+      <td class="hide-sm">${l.semPreco ? '—' : `<span class="tag ${classe}">${rot}</span>`}</td>
       <td><button class="kill" data-apagar="${l.id}" aria-label="Remover lançamento">×</button></td>
     </tr>`;
   }).join('');
@@ -1871,28 +1906,45 @@ function renderFiscal(){
 
   const params = { ...Motor.PARAMETROS_BR_2026,
     compensarPerdasNoMesNacional: estado.compensarPerdas };
-  const nac = Motor.simularMensalNacional(estado.apuracao.alienacoes, params);
+  // Decimais viram número simples para poderem ser ordenados e comparados.
+  const nac = Motor.simularMensalNacional(estado.apuracao.alienacoes, params).map(m => ({
+    competencia: m.competencia,
+    total: num(m.totalAlienacoesBrl),
+    ganho: num(m.ganhoBrutoBrl),
+    liquido: num(m.resultadoLiquidoBrl),
+    base: num(m.baseCalculoBrl),
+    imposto: num(m.impostoBrl),
+    isento: m.isento
+  }));
+  marcarOrdem('#tab-nacional thead th', estado.ordemFiscalNac);
   document.getElementById('fiscal-nacional').innerHTML = nac.length
-    ? nac.map(m => `<tr>
+    ? ordenar(nac, estado.ordemFiscalNac).map(m => `<tr>
         <td class="lead">${m.competencia}</td>
-        <td>${reais(m.totalAlienacoesBrl)}</td>
-        <td class="hide-sm">${reais(m.ganhoBrutoBrl)}</td>
-        <td class="hide-sm ${cls(num(m.resultadoLiquidoBrl))}">${reais(m.resultadoLiquidoBrl)}</td>
-        <td>${m.isento ? '<span class="tag doc">Isento</span>' : reais(m.baseCalculoBrl)}</td>
-        <td>${reais(m.impostoBrl)}</td>
+        <td>${reais(m.total)}</td>
+        <td class="hide-sm">${reais(m.ganho)}</td>
+        <td class="hide-sm ${cls(m.liquido)}">${reais(m.liquido)}</td>
+        <td>${m.isento ? '<span class="tag doc">Isento</span>' : reais(m.base)}</td>
+        <td>${reais(m.imposto)}</td>
       </tr>`).join('')
-    : '<tr><td colspan="6" class="empty">Nenhuma alienação no regime nacional.</td></tr>';
+    : '<tr><td colspan="6" class="tabela-vazia">Nenhuma alienação no regime nacional.</td></tr>';
 
-  const ext = Motor.simularAnualExterior(estado.apuracao.alienacoes, params);
+  const ext = Motor.simularAnualExterior(estado.apuracao.alienacoes, params).map(a => ({
+    ano: a.ano,
+    total: num(a.totalAlienacoesBrl),
+    liquido: num(a.resultadoLiquidoBrl),
+    base: num(a.baseCalculoBrl),
+    imposto: num(a.impostoBrl)
+  }));
+  marcarOrdem('#tab-exterior thead th', estado.ordemFiscalExt);
   document.getElementById('fiscal-exterior').innerHTML = ext.length
-    ? ext.map(a => `<tr>
+    ? ordenar(ext, estado.ordemFiscalExt).map(a => `<tr>
         <td class="lead">${a.ano}</td>
-        <td>${reais(a.totalAlienacoesBrl)}</td>
-        <td class="hide-sm ${cls(num(a.resultadoLiquidoBrl))}">${reais(a.resultadoLiquidoBrl)}</td>
-        <td>${reais(a.baseCalculoBrl)}</td>
-        <td>${reais(a.impostoBrl)}</td>
+        <td>${reais(a.total)}</td>
+        <td class="hide-sm ${cls(a.liquido)}">${reais(a.liquido)}</td>
+        <td>${reais(a.base)}</td>
+        <td>${reais(a.imposto)}</td>
       </tr>`).join('')
-    : '<tr><td colspan="5" class="empty">Nenhuma alienação no regime exterior.</td></tr>';
+    : '<tr><td colspan="5" class="tabela-vazia">Nenhuma alienação no regime exterior.</td></tr>';
 }
 
 function renderTudo(){
@@ -2117,6 +2169,9 @@ ligarOrdenacao('.vista#v-ativo thead', 'ordemSerie', () => {
   marcarOrdem('.vista#v-ativo thead th', estado.ordemSerie);
   renderSerie();
 });
+ligarOrdenacao('#livro thead', 'ordemLivro', renderLivro);
+ligarOrdenacao('#tab-nacional thead', 'ordemFiscalNac', renderFiscal);
+ligarOrdenacao('#tab-exterior thead', 'ordemFiscalExt', renderFiscal);
 
 // moeda de referência
 document.querySelectorAll('[data-moeda]').forEach(chip => {
