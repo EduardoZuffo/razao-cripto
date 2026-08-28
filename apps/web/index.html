@@ -96,7 +96,9 @@ button[disabled]{opacity:.4;cursor:not-allowed}
 input[type="date"],input[type="search"],textarea{
   font-family:'IBM Plex Mono',monospace;font-size:14px;color:var(--ink);
   background:transparent;border:0;border-bottom:1.5px solid var(--ink);padding:5px 2px;
+  max-width:100%;
 }
+.form-grid input[type="date"]{width:100%}
 input[type="search"]{width:min(320px,100%)}
 textarea{border:1px solid var(--rule);background:#FBFCF7;width:100%;padding:8px;resize:vertical}
 :focus-visible{outline:2px solid var(--stamp);outline-offset:2px}
@@ -123,9 +125,9 @@ textarea{border:1px solid var(--rule);background:#FBFCF7;width:100%;padding:8px;
 .comp-legenda span{display:flex;align-items:center;gap:6px}
 .comp-legenda i{width:11px;height:11px;display:inline-block;border:1px solid var(--ink)}
 
-.plot{position:relative;height:250px}
+.plot{position:relative;height:250px;overflow:hidden}
 .plot.baixo{height:180px}
-.plot canvas{width:100%!important}
+.plot canvas{position:absolute!important;top:0;left:0;width:100%!important;height:100%!important}
 .legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:10px;font-family:'IBM Plex Sans Condensed',sans-serif;font-size:12px}
 .legend span{display:flex;align-items:center;gap:6px;color:var(--muted)}
 .legend i{width:22px;height:0;border-top-width:2px;display:inline-block}
@@ -455,6 +457,9 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
           <button class="solid" id="f-gravar">Lançar</button>
           <span class="aviso" id="f-dica"></span>
         </div>
+        <div class="toolbar" style="margin:0">
+          <span class="aviso" id="f-preview"></span>
+        </div>
       </div>
     </details>
 
@@ -697,11 +702,45 @@ const pct = n => (n == null || !isFinite(n)) ? '—' :
   (n >= 0 ? '+' : '−') + Math.abs(n).toFixed(2).replace('.', ',') + '%';
 const cls = n => n == null ? '' : n >= 0 ? 'up' : 'down';
 const qtdTexto = q => q ? q.toLocaleString('pt-BR', { maximumFractionDigits:8 }) : '';
-const numero = txt => {
-  const n = parseFloat(String(txt).replace(/\s/g,'').replace(/\./g,'').replace(',','.'));
-  return isFinite(n) && n > 0 ? n : 0;
-};
+/**
+ * Lê número digitado aceitando as duas convenções.
+ * Regra: o último separador é o decimal, os demais são de milhar.
+ * Exceção brasileira: ponto isolado seguido de exatamente três dígitos,
+ * com parte inteira diferente de zero, é milhar — "180.000" é cento e
+ * oitenta mil, mas "0.001" é um milésimo.
+ */
+function numero(txt){
+  const cru = String(txt ?? '').trim().replace(/[^\d.,]/g, '');
+  if (!cru) return 0;
 
+  const pontos = (cru.match(/\./g) || []).length;
+  const virgulas = (cru.match(/,/g) || []).length;
+  if (!pontos && !virgulas) return Math.max(0, parseFloat(cru) || 0);
+
+  let sep;
+  if (pontos && virgulas){
+    // Convivem os dois: o último é o decimal, o outro agrupa milhares.
+    sep = Math.max(cru.lastIndexOf('.'), cru.lastIndexOf(','));
+  } else if (pontos > 1 || virgulas > 1){
+    // Repetido é agrupamento — um número tem no máximo um decimal.
+    sep = -1;
+  } else {
+    const pos = pontos ? cru.lastIndexOf('.') : cru.lastIndexOf(',');
+    const casas = cru.length - pos - 1;
+    const inteiro = cru.slice(0, pos);
+    // Convenção brasileira: ponto isolado com três casas é milhar,
+    // salvo quando a parte inteira é zero — "0.001" é um milésimo.
+    const milhar = pontos === 1 && casas === 3 && inteiro !== '' && Number(inteiro) !== 0;
+    sep = milhar ? -1 : pos;
+  }
+
+  const limpo = sep === -1
+    ? cru.replace(/[.,]/g, '')
+    : cru.slice(0, sep).replace(/[.,]/g, '') + '.' + cru.slice(sep + 1).replace(/[.,]/g, '');
+
+  const n = parseFloat(limpo);
+  return isFinite(n) && n > 0 ? n : 0;
+}
 const fmtDia  = new Intl.DateTimeFormat('pt-BR', { day:'2-digit', month:'2-digit', year:'2-digit' });
 const fmtHora = new Intl.DateTimeFormat('pt-BR', { day:'2-digit', month:'2-digit', hour:'2-digit' });
 
@@ -1261,9 +1300,12 @@ document.getElementById('razao-corpo').addEventListener('click', async ev => {
   if (rem){
     ev.stopPropagation();
     const id = rem.dataset.remove;
-    const temLancamento = estado.lancamentos.some(l => l.ativoId === id);
-    if (temLancamento &&
-        !confirm('Este ativo tem lançamentos no livro. Remover da lista? Os lançamentos permanecem.')) return;
+    const quantos = estado.lancamentos.filter(l => l.ativoId === id).length;
+    if (quantos){
+      return erro(`${simboloDe(id)} tem ${quantos} lançamento${quantos > 1 ? 's' : ''} no livro ` +
+        `e não pode sair da lista — a posição sumiria da tela mas continuaria sendo calculada. ` +
+        `Apague os lançamentos primeiro.`);
+    }
     estado.lista = estado.lista.filter(x => x !== id);
     estado.comparar = estado.comparar.filter(x => x !== id);
     store.gravar('carteira', estado.lista);
@@ -1399,7 +1441,19 @@ document.getElementById('resultados').addEventListener('click', async ev => {
 });
 
 // ═══ livro de lançamentos ═══
+let contadorLancamento = 0;
+let assinaturaSelects = null;
+
+/**
+ * Só reconstrói as listas suspensas quando o conjunto de ativos mudou.
+ * Reescrever o innerHTML de um select aberto trava a interação no Safari
+ * e descarta a escolha do usuário no meio do preenchimento.
+ */
 function popularSelects(){
+  const assinatura = estado.lista.map(id => id + ':' + simboloDe(id)).join('|');
+  if (assinatura === assinaturaSelects) return;
+  assinaturaSelects = assinatura;
+
   const opcoes = estado.lista.map(id =>
     `<option value="${id}">${simboloDe(id)} — ${id}</option>`).join('');
   for (const alvo of ['f-ativo', 'f-ativo2']){
@@ -1442,7 +1496,40 @@ function ajustarFormulario(){
 }
 
 ['f-tipo', 'f-moeda'].forEach(id =>
-  document.getElementById(id).addEventListener('change', ajustarFormulario));
+  document.getElementById(id).addEventListener('change', () => { ajustarFormulario(); previewLancamento(); }));
+
+/**
+ * Mostra o valor já interpretado antes de gravar. Ponto e vírgula convivem
+ * mal em formulário financeiro — melhor o usuário conferir que adivinhar.
+ */
+function previewLancamento(){
+  const v = id => document.getElementById(id).value;
+  const tipo = document.getElementById('f-tipo').value;
+  const semPreco = ['transferencia_entrada','transferencia_saida','perda','taxa'].includes(tipo);
+  const qtd = numero(v('f-qtd'));
+  const preco = numero(v('f-preco'));
+  const moeda = document.getElementById('f-moeda').value;
+  const cifra = moeda === 'USD' ? 'US$ ' : 'R$ ';
+  const fmt = n => n.toLocaleString('pt-BR', { maximumFractionDigits:8 });
+  const alvo = document.getElementById('f-preview');
+
+  if (!qtd){ alvo.textContent = ''; return; }
+  const simbolo = simboloDe(v('f-ativo'));
+
+  if (semPreco || !preco){
+    alvo.textContent = `Lendo: ${fmt(qtd)} ${simbolo}`;
+    return;
+  }
+  if (tipo === 'permuta'){
+    alvo.textContent = `Lendo: entrega ${fmt(qtd)} ${simbolo} numa troca de ${cifra}${fmt(preco)}`;
+    return;
+  }
+  alvo.textContent = `Lendo: ${fmt(qtd)} ${simbolo} × ${cifra}${fmt(preco)} = ${cifra}${fmt(qtd * preco)}`;
+}
+
+['f-qtd', 'f-preco', 'f-qtd2', 'f-ativo'].forEach(id =>
+  document.getElementById(id).addEventListener('input', previewLancamento));
+document.getElementById('f-ativo').addEventListener('change', previewLancamento);
 
 document.getElementById('f-gravar').addEventListener('click', () => {
   const v = id => document.getElementById(id).value.trim();
@@ -1477,7 +1564,7 @@ document.getElementById('f-gravar').addEventListener('click', () => {
     corretora: v('f-corretora') || undefined
   };
 
-  const marca = Date.now().toString(36);
+  const marca = Date.now().toString(36) + (contadorLancamento++).toString(36);
   let novos;
 
   if (permuta){
@@ -1510,6 +1597,7 @@ document.getElementById('f-gravar').addEventListener('click', () => {
   estado.lancamentos = [...anteriores, ...novos];
   store.gravar('lancamentos', estado.lancamentos);
   ['f-qtd','f-qtd2','f-preco','f-taxa'].forEach(id => document.getElementById(id).value = '');
+  previewLancamento();
   renderTudo();
   toast(permuta ? 'Permuta lançada em duas pernas.' : 'Lançamento registrado.');
 });
